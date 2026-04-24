@@ -6,10 +6,15 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
+use Illuminate\Database\Eloquent\SoftDeletes;
+use App\Traits\LogsActivity;
+
 class Sale extends Model
 {
+    use SoftDeletes, LogsActivity;
+
     protected $fillable = [
-        'invoice_number', 'customer_id', 'warehouse_id', 'user_id',
+        'invoice_number', 'customer_id', 'warehouse_id', 'user_id', 'shift_id',
         'sale_date', 'due_date', 'subtotal', 'discount_amount', 'discount_percent',
         'tax', 'total', 'paid', 'change_amount', 'profit',
         'payment_type', 'payment_status', 'status', 'notes',
@@ -31,6 +36,11 @@ class Sale extends Model
     public function customer(): BelongsTo
     {
         return $this->belongsTo(Customer::class);
+    }
+
+    public function shift(): BelongsTo
+    {
+        return $this->belongsTo(Shift::class);
     }
 
     public function warehouse(): BelongsTo

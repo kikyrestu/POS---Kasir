@@ -89,6 +89,8 @@ class ProductController extends Controller
         return redirect()->route('products.index')->with('success', 'Produk berhasil ditambahkan.');
     }
 
+
+
     public function edit(Product $product)
     {
         $product->load(['category', 'stocks.warehouse', 'prices']);
@@ -150,9 +152,11 @@ class ProductController extends Controller
     // API endpoint for POS search
     public function search(Request $request)
     {
+        $searchTerm = $request->q ?? $request->query('query');
+        
         $products = Product::with(['stocks.warehouse', 'category'])
             ->where('is_active', true)
-            ->when($request->q, function ($q, $s) {
+            ->when($searchTerm, function ($q, $s) {
                 $q->where(function ($q) use ($s) {
                     $q->where('name', 'like', "%{$s}%")
                       ->orWhere('barcode', $s)
@@ -164,5 +168,33 @@ class ProductController extends Controller
             ->get();
 
         return response()->json($products);
+    }
+
+    public function export()
+    {
+        return \Maatwebsite\Excel\Facades\Excel::download(new \App\Exports\ProductExport, 'products.xlsx');
+    }
+
+    public function downloadTemplate()
+    {
+        return \Maatwebsite\Excel\Facades\Excel::download(new \App\Exports\ProductTemplateExport, 'product_template.xlsx');
+    }
+
+    public function import(\Illuminate\Http\Request $request)
+    {
+        $request->validate([
+            'file' => 'required|mimes:xlsx,xls,csv|max:5120',
+        ]);
+
+        try {
+            \Maatwebsite\Excel\Facades\Excel::import(new \App\Imports\ProductImport, $request->file('file'));
+            return redirect()->back()->with('success', 'Data produk berhasil ter-import ke database.');
+        } catch (\Maatwebsite\Excel\Validators\ValidationException $e) {
+            $failures = $e->failures();
+            $msg = "Error pada baris: " . $failures[0]->row() . " - " . implode(", ", $failures[0]->errors());
+            return redirect()->back()->with('error', $msg);
+        } catch (\Exception $e) {
+            return redirect()->back()->with('error', 'Terjadi kesalahan sistem: ' . $e->getMessage());
+        }
     }
 }

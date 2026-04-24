@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, usePage } from '@inertiajs/react';
 import {
     LayoutDashboard,
@@ -42,6 +42,8 @@ const NAV_ITEMS = [
         icon: Warehouse, label: 'Gudang', children: [
             { label: 'Daftar Gudang', route: 'warehouses.index' },
             { label: 'Transfer Barang', route: 'stock-transfers.index' },
+            { label: 'Penyesuaian Stok', route: 'stock-opnames.index' },
+            { label: 'Riwayat Mutasi', route: 'stock-movements.index' },
         ]
     },
     { icon: TruckIcon, label: 'Supplier', route: 'suppliers.index' },
@@ -58,12 +60,15 @@ const NAV_ITEMS = [
             { label: 'Retur Pembelian', route: 'purchase-returns.index' },
         ]
     },
+    { icon: Wallet, label: 'Biaya & Kasbon', route: 'expenses.index' },
     { icon: Users, label: 'Pelanggan', route: 'customers.index' },
     {
         icon: BarChart3, label: 'Laporan', children: [
             { label: 'Penjualan Per Invoice', route: 'reports.sales-by-invoice' },
             { label: 'Penjualan Per Item', route: 'reports.sales-by-item' },
             { label: 'Pembelian Per Invoice', route: 'reports.purchases-by-invoice' },
+            { label: 'Laba / Rugi (P&L)', route: 'reports.profit-loss' },
+            { label: 'Aging Piutang', route: 'reports.receivables' },
         ]
     },
     {
@@ -71,6 +76,7 @@ const NAV_ITEMS = [
             { label: 'Pengaturan', route: 'settings.index' },
             { label: 'User', route: 'users.index' },
             { label: 'Role & Permission', route: 'roles.index' },
+            { label: 'Log Aktivitas Sistem', route: 'activity-logs.index' },
         ]
     },
 ];
@@ -79,6 +85,14 @@ export default function AppLayout({ children, title }) {
     const { auth, flash } = usePage().props;
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const [expandedMenu, setExpandedMenu] = useState(null);
+
+    useEffect(() => {
+        const isChildActive = (children) => children?.some(child => route().current(child.route));
+        const activeParent = NAV_ITEMS.find(item => item.children && isChildActive(item.children));
+        if (activeParent) {
+            setExpandedMenu(activeParent.label);
+        }
+    }, [usePage().url]);
 
     return (
         <div
@@ -118,7 +132,7 @@ export default function AppLayout({ children, title }) {
                                     <div>
                                         <button
                                             onClick={() => setExpandedMenu(expandedMenu === item.label ? null : item.label)}
-                                            className={`w-full flex items-center justify-between gap-3 px-3 py-3 rounded-xl transition-all duration-300 text-slate-500 hover:text-slate-800 hover:bg-slate-100 font-medium`}
+                                            className={`w-full flex items-center justify-between gap-3 px-3 py-3 rounded-xl transition-all duration-300 text-slate-500 hover:text-slate-800 hover:bg-slate-100 font-medium ${item.children.some(child => route().current(child.route)) ? 'text-blue-700 bg-blue-50/70 font-semibold' : ''}`}
                                         >
                                             <div className="flex items-center gap-3">
                                                 <item.icon className="w-5 h-5 text-slate-400" />

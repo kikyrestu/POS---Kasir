@@ -42,10 +42,13 @@ class DashboardController extends Controller
 
         // ── Penjualan Perbulan (3 years comparison) ──
         $monthlySales = [];
+        $isSqlite = \Illuminate\Support\Facades\DB::connection()->getDriverName() === 'sqlite';
+        $monthSelect = $isSqlite ? 'CAST(strftime("%m", sale_date) AS INTEGER)' : 'MONTH(sale_date)';
+        
         foreach ([$currentYear - 2, $currentYear - 1, $currentYear] as $yr) {
             $data = Sale::where('status', 'completed')
                 ->whereYear('sale_date', $yr)
-                ->selectRaw('MONTH(sale_date) as month, SUM(total) as total')
+                ->selectRaw("{$monthSelect} as month, SUM(total) as total")
                 ->groupBy('month')
                 ->pluck('total', 'month')
                 ->toArray();
@@ -227,6 +230,41 @@ class DashboardController extends Controller
         // ── Categories list for stock filter ──
         $categories = Category::where('is_active', true)->get(['id', 'name']);
 
+        // ── Low Stock & Expiry Alerts ──
+        $lowStockAlerts = Product::with('category')
+            ->where('is_active', true)
+            ->whereRaw('COALESCE((SELECT SUM(quantity) FROM product_stocks WHERE product_stocks.product_id = products.id), 0) < stock_minimum')
+            ->get(['id', 'name', 'code', 'stock_minimum', 'category_id'])
+            ->map(function ($p) {
+                // Calculate actual stock
+                $actual = DB::table('product_stocks')->where('product_id', $p->id)->sum('quantity');
+                return [
+                    'id' => $p->id,
+                    'name' => $p->name,
+                    'code' => $p->code,
+                    'stock_minimum' => $p->stock_minimum,
+                    'actual_stock' => $actual,
+                    'category' => $p->category?->name
+                ];
+            });
+
+        $expiryAlerts = Product::with('category')
+            ->where('is_active', true)
+            ->whereNotNull('expiry_date')
+            ->where('expiry_date', '<=', Carbon::now()->addDays(30)->toDateString())
+            ->orderBy('expiry_date', 'asc')
+            ->get(['id', 'name', 'code', 'expiry_date', 'category_id'])
+            ->map(function ($p) {
+                return [
+                    'id' => $p->id,
+                    'name' => $p->name,
+                    'code' => $p->code,
+                    'expiry_date' => $p->expiry_date->format('Y-m-d'),
+                    'days_left' => Carbon::now()->diffInDays($p->expiry_date, false),
+                    'category' => $p->category?->name
+                ];
+            });
+
         return Inertia::render('Dashboard', [
             'currentYear' => $currentYear,
             'availableYears' => [$currentYear - 2, $currentYear - 1, $currentYear],
@@ -252,6 +290,8 @@ class DashboardController extends Controller
             'latestProducts' => $latestProducts,
             'topCustomers' => $topCustomers,
             'recentSales' => $recentSales,
+            'lowStockAlerts' => $lowStockAlerts,
+            'expiryAlerts' => $expiryAlerts,
         ]);
     }
 }

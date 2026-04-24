@@ -43,4 +43,14 @@ class User extends Authenticatable
     {
         return $this->role?->name === 'admin';
     }
+
+    public function shifts()
+    {
+        return $this->hasMany(\App\Models\Shift::class);
+    }
+
+    public function expenses()
+    {
+        return $this->hasMany(\App\Models\Expense::class);
+    }
 }

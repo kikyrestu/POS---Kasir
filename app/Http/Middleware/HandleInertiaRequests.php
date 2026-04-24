@@ -38,6 +38,9 @@ class HandleInertiaRequests extends Middleware
                     'email' => $request->user()->email,
                     'avatar' => $request->user()->avatar,
                     'role' => $request->user()->role?->only('id', 'name', 'display_name'),
+                    'permissions' => $request->user()->isAdmin()
+                        ? \App\Models\Permission::pluck('name')->toArray()
+                        : ($request->user()->role ? $request->user()->role->permissions->pluck('name')->toArray() : []),
                 ] : null,
             ],
             'flash' => [

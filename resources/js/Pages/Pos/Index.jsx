@@ -1,15 +1,25 @@
 import { Head, Link, router, usePage } from '@inertiajs/react';
 import { useState, useRef, useEffect, useCallback } from 'react';
+import axios from 'axios';
 import {
     Search, ShoppingCart, Plus, Minus, Trash2, X, User, CreditCard,
-    Banknote, Receipt as ReceiptIcon, Package, Grid3X3, ChevronDown, AlertCircle, CheckCircle2, ArrowLeft, Printer
+    Banknote, Receipt as ReceiptIcon, Package, Grid3X3, ChevronDown, AlertCircle, CheckCircle2, ArrowLeft, Printer, Lock
 } from 'lucide-react';
 import { formatCurrency, formatNumber } from '@/Utils/format';
 import ReceiptComponent from '@/Components/Receipt';
 
-export default function PosIndex({ customers, categories, warehouses, defaultWarehouseId, invoiceNumber }) {
+export default function PosIndex({ customers, categories, warehouses, defaultWarehouseId, invoiceNumber, initialActiveShift }) {
     const { auth } = usePage().props;
 
+    // Shift Logic States
+    const [activeShift, setActiveShift] = useState(initialActiveShift);
+    const [shiftStartingCash, setShiftStartingCash] = useState('');
+    const [shiftProcessing, setShiftProcessing] = useState(false);
+    const [showCloseShiftModal, setShowCloseShiftModal] = useState(false);
+    const [shiftClosingExpected, setShiftClosingExpected] = useState(0);
+    const [shiftClosingCash, setShiftClosingCash] = useState('');
+    const [shiftClosingNotes, setShiftClosingNotes] = useState('');
+    
     // State
     const [search, setSearch] = useState('');
     const [products, setProducts] = useState([]);
@@ -34,8 +44,67 @@ export default function PosIndex({ customers, categories, warehouses, defaultWar
     const searchRef = useRef(null);
     const searchTimeout = useRef(null);
 
-    // Focus search on mount
-    useEffect(() => { searchRef.current?.focus(); }, []);
+    // Calculations
+    const subtotal = cart.reduce((sum, i) => sum + (i.unit_price * i.quantity) - i.discount, 0);
+    const discountAmount = discountType === 'percent' ? subtotal * (discount / 100) : discount;
+    const totalTax = tax;
+    const grandTotal = subtotal - discountAmount + totalTax;
+    const paid = parseFloat(paidAmount) || 0;
+    const change = Math.max(0, paid - grandTotal);
+
+    // Focus search on mount & keyboard shortcuts
+    useEffect(() => { 
+        searchRef.current?.focus(); 
+        
+        const handleKeyDown = (e) => {
+            if (e.key === 'F1') {
+                e.preventDefault();
+                searchRef.current?.focus();
+            }
+            if (e.key === 'F8' || e.key === 'F2') {
+                e.preventDefault();
+                if (cart.length > 0 && !showPayment) {
+                    setPaidAmount(grandTotal.toString());
+                    setShowPayment(true);
+                }
+            }
+            if (e.key === 'F4') {
+                e.preventDefault();
+                if (cart.length > 0) {
+                    const ref = prompt("Masukkan referensi Hold (cth: Nama/Antrian):") || 'Hold-' + Date.now();
+                    const body = JSON.stringify({
+                        reference_number: ref,
+                        customer_name: customers.find(c => c.id === selectedCustomer)?.name || 'Umum',
+                        cart_data: cart.map(i => ({...i})),
+                        subtotal: grandTotal
+                    });
+                    
+                    fetch(route('pos.held.store'), {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Accept': 'application/json',
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content,
+                            'X-Requested-With': 'XMLHttpRequest',
+                        },
+                        body
+                    }).then(r => r.json()).then(data => {
+                        if (data.success) {
+                            showNotification('Transaksi disimpan sementara!');
+                            // Clear cart logic locally since newTransaction requires POS update
+                            setCart([]);
+                            setDiscount(0);
+                            setTax(0);
+                            setSelectedCustomer(null);
+                        }
+                    }).catch(() => showNotification('Gagal hold transaksi!', 'error'));
+                }
+            }
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [cart.length, grandTotal, showPayment]);
 
     // Search products
     const searchProducts = useCallback((query, categoryId) => {
@@ -130,14 +199,6 @@ export default function PosIndex({ customers, categories, warehouses, defaultWar
         setSelectedCustomer(null);
     };
 
-    // Calculations
-    const subtotal = cart.reduce((sum, i) => sum + (i.unit_price * i.quantity) - i.discount, 0);
-    const discountAmount = discountType === 'percent' ? subtotal * (discount / 100) : discount;
-    const totalTax = tax;
-    const grandTotal = subtotal - discountAmount + totalTax;
-    const paid = parseFloat(paidAmount) || 0;
-    const change = Math.max(0, paid - grandTotal);
-
     const getProductStock = (product) => {
         if (!product.stocks) return 0;
         const whStock = product.stocks.find(s => s.warehouse_id === selectedWarehouse);
@@ -227,7 +288,7 @@ export default function PosIndex({ customers, categories, warehouses, defaultWar
                 </div>
             )}
 
-            <div className="h-screen flex bg-slate-50/80">
+            <div className="h-screen flex flex-col md:flex-row bg-slate-50/80">
                 {/* LEFT - Product Panel */}
                 <div className="flex-1 flex flex-col overflow-hidden">
                     {/* Header */}
@@ -241,7 +302,24 @@ export default function PosIndex({ customers, categories, warehouses, defaultWar
                                     <ReceiptIcon className="w-4 h-4 text-white" />
                                 </div>
                                 <div>
-                                    <h1 className="text-lg font-bold text-slate-900">POS Kasir</h1>
+                                    <div className="flex items-center gap-2">
+                                        <h1 className="text-lg font-bold text-slate-900">POS Kasir</h1>
+                                        {activeShift && (
+                                            <button 
+                                                onClick={async () => {
+                                                    try {
+                                                        const res = await axios.get(route('shifts.closing-data'));
+                                                        setShiftClosingExpected(res.data.expected_cash);
+                                                        setShiftClosingCash(res.data.expected_cash); // pre-fill
+                                                        setShowCloseShiftModal(true);
+                                                    } catch (err) {
+                                                        alert('Gagal mengambil data shift.');
+                                                    }
+                                                }}
+                                                className="px-2 py-0.5 bg-rose-50 border border-rose-200 text-rose-600 text-[10px] uppercase font-bold rounded hover:bg-rose-100 transition-colors"
+                                            >Tutup Shift</button>
+                                        )}
+                                    </div>
                                     <p className="text-xs text-slate-400 font-mono">{invoiceNumber}</p>
                                 </div>
                             </div>
@@ -358,7 +436,7 @@ export default function PosIndex({ customers, categories, warehouses, defaultWar
                 </div>
 
                 {/* RIGHT - Cart Panel */}
-                <div className="w-[420px] bg-white border-l border-slate-200/60 flex flex-col shrink-0">
+                <div className="w-full md:w-[420px] h-1/2 md:h-full bg-white border-t md:border-t-0 md:border-l border-slate-200/60 flex flex-col shrink-0">
                     {/* Cart Header */}
                     <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
                         <div className="flex items-center gap-2">
@@ -673,6 +751,68 @@ export default function PosIndex({ customers, categories, warehouses, defaultWar
                 </div>
             )}
 
+            {/* Block Overlay for Missing Shift */}
+            {!activeShift && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/80 backdrop-blur-md px-4">
+                    <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden animate-scale-in">
+                        <div className="bg-gradient-to-b from-blue-50 to-white px-6 pt-8 pb-6 border-b border-slate-100">
+                            <div className="w-16 h-16 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center mx-auto mb-4 shadow-inner">
+                                <Lock className="w-8 h-8" />
+                            </div>
+                            <h2 className="text-2xl font-bold text-slate-800 text-center">Akses POS Terkunci</h2>
+                            <p className="text-slate-500 text-sm text-center mt-2 leading-relaxed">
+                                Halo {auth.user?.name}, Anda belum membuka shift kasir.<br/>Silakan masukkan modal awal laci uang (starting cash) untuk mulai menerima transaksi.
+                            </p>
+                        </div>
+                        <div className="p-6 space-y-5">
+                            <div>
+                                <label className="block text-sm font-semibold text-slate-700 mb-2">Uang Fisik Modal Laci (Rp)</label>
+                                <div className="relative">
+                                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold">Rp</span>
+                                    <input
+                                        type="number"
+                                        min="0"
+                                        placeholder="Contoh: 500000"
+                                        value={shiftStartingCash}
+                                        onChange={e => setShiftStartingCash(e.target.value)}
+                                        onKeyDown={(e) => {
+                                            if(e.key === 'Enter' && shiftStartingCash !== '' && shiftStartingCash >= 0) {
+                                                const btn = document.getElementById('btn-buka-shift');
+                                                if(btn) btn.click();
+                                            }
+                                        }}
+                                        className="w-full pl-12 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 outline-none text-lg font-bold text-slate-800"
+                                    />
+                                </div>
+                            </div>
+                            <button
+                                id="btn-buka-shift"
+                                onClick={async () => {
+                                    if(shiftStartingCash === '' || shiftStartingCash < 0) return;
+                                    setShiftProcessing(true);
+                                    try {
+                                        await axios.post(route('shifts.open'), { starting_cash: shiftStartingCash });
+                                        // Reload page totally to pull fresh active shift layout
+                                        window.location.reload();
+                                    } catch(e) {
+                                        alert('Gagal membuka shift!');
+                                    } finally {
+                                        setShiftProcessing(false);
+                                    }
+                                }}
+                                disabled={shiftProcessing || shiftStartingCash === '' || shiftStartingCash < 0}
+                                className="w-full py-3.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-lg hover:shadow-blue-500/30 transition-all flex justify-center items-center gap-2 disabled:opacity-50"
+                            >
+                                {shiftProcessing ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : 'Buka Shift Kasir Sekarang'}
+                            </button>
+                            <div className="text-center">
+                                <Link href={route('dashboard')} className="text-sm font-medium text-slate-500 hover:text-slate-800 underline underline-offset-4">Kembali ke Dashboard</Link>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             <style>{`
                 @keyframes slide-in { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
                 @keyframes scale-in { from { transform: scale(0.95); opacity: 0; } to { transform: scale(1); opacity: 1; } }
@@ -681,6 +821,70 @@ export default function PosIndex({ customers, categories, warehouses, defaultWar
                 .scrollbar-hide::-webkit-scrollbar { display: none; }
                 .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
             `}</style>
+            
+            {/* Close Shift Modal */}
+            {showCloseShiftModal && (
+                <div className="fixed inset-0 z-[110] flex items-center justify-center bg-slate-900/80 backdrop-blur-sm px-4">
+                    <div className="bg-white rounded-2xl shadow-xl w-full max-w-md animate-scale-in flex flex-col overflow-hidden">
+                        <div className="px-6 py-4 border-b border-slate-100 bg-slate-50 flex justify-between items-center">
+                            <h3 className="font-bold text-slate-800 text-lg">Tutup Shift Kasir</h3>
+                            <button onClick={() => setShowCloseShiftModal(false)} className="text-slate-400 hover:text-slate-600 transition-colors">
+                                <X className="w-5 h-5" />
+                            </button>
+                        </div>
+                        <div className="p-6 space-y-4">
+                            <div className="bg-blue-50 border border-blue-100 text-blue-800 p-3 rounded-xl text-sm font-medium flex justify-between items-center">
+                                <span>Estimasi Uang di Laci (Sistem):</span>
+                                <span className="font-mono text-lg font-bold">Rp{new Intl.NumberFormat('id-ID').format(shiftClosingExpected)}</span>
+                            </div>
+                            
+                            <div>
+                                <label className="block text-sm font-semibold text-slate-700 mb-2">Total Uang Fisik Aktual (Hitungan Laci)</label>
+                                <div className="relative">
+                                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold">Rp</span>
+                                    <input
+                                        type="number"
+                                        min="0"
+                                        value={shiftClosingCash}
+                                        onChange={(e) => setShiftClosingCash(e.target.value)}
+                                        className="w-full pl-12 pr-4 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500/30 font-bold text-slate-800 text-lg"
+                                    />
+                                </div>
+                            </div>
+                            
+                            <div>
+                                <label className="block text-sm font-semibold text-slate-700 mb-2">Catatan Rekap (Opsional)</label>
+                                <textarea
+                                    value={shiftClosingNotes}
+                                    onChange={(e) => setShiftClosingNotes(e.target.value)}
+                                    placeholder="Tulis alasan jika ada selisih uang..."
+                                    className="w-full border border-slate-300 rounded-xl px-4 py-2 text-sm focus:ring-2 focus:ring-blue-500/30 min-h-[80px]"
+                                ></textarea>
+                            </div>
+                        </div>
+                        <div className="p-6 border-t border-slate-100 bg-slate-50 flex gap-3">
+                            <button onClick={() => setShowCloseShiftModal(false)} className="flex-1 py-2.5 rounded-xl border border-slate-300 text-slate-700 font-semibold hover:bg-slate-100 transition-colors">Batal</button>
+                            <button 
+                                onClick={async () => {
+                                    setShiftProcessing(true);
+                                    try {
+                                        await axios.post(route('shifts.close'), { actual_cash_ending: shiftClosingCash, notes: shiftClosingNotes });
+                                        window.location.reload();
+                                    } catch (err) {
+                                        alert('Gagal menutup shift!');
+                                    } finally {
+                                        setShiftProcessing(false);
+                                    }
+                                }}
+                                disabled={shiftProcessing || shiftClosingCash === '' || shiftClosingCash < 0}
+                                className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-rose-600 to-rose-500 text-white font-bold shadow-md hover:shadow-lg disabled:opacity-50 flex items-center justify-center gap-2"
+                            >
+                                {shiftProcessing ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : 'Selesaikan Shift'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </>
     );
 }

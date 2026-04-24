@@ -41,6 +41,13 @@ class SaleController extends Controller
         ]);
     }
 
+    public function printReceipt(Sale $sale)
+    {
+        $sale->load(['details.product', 'customer', 'user']);
+        $store = Setting::whereIn('group', ['toko', 'struk'])->pluck('value', 'key');
+        return view('print.receipt', compact('sale', 'store'));
+    }
+
     public function destroy(Sale $sale)
     {
         // Restore stock (minus already-returned quantities)

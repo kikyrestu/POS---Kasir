@@ -6,8 +6,13 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
+use Illuminate\Database\Eloquent\SoftDeletes;
+use App\Traits\LogsActivity;
+
 class Purchase extends Model
 {
+    use SoftDeletes, LogsActivity;
+
     protected $fillable = [
         'invoice_number', 'supplier_id', 'warehouse_id', 'user_id',
         'purchase_date', 'due_date', 'subtotal', 'discount', 'tax',

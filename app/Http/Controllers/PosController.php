@@ -16,7 +16,7 @@ use Inertia\Inertia;
 
 class PosController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
         $defaultWarehouse = Warehouse::where('is_default', true)->first()
             ?? Warehouse::first();
@@ -27,6 +27,7 @@ class PosController extends Controller
             'warehouses' => Warehouse::where('is_active', true)->get(['id', 'name']),
             'defaultWarehouseId' => $defaultWarehouse?->id,
             'invoiceNumber' => Sale::generateInvoiceNumber(),
+            'initialActiveShift' => $request->user()->shifts()->where('status', 'open')->first(),
         ]);
     }
 
@@ -35,7 +36,7 @@ class PosController extends Controller
         $validated = $request->validate([
             'customer_id' => 'nullable|exists:customers,id',
             'warehouse_id' => 'required|exists:warehouses,id',
-            'payment_type' => 'required|in:cash,transfer,tempo',
+            'payment_type' => 'required|in:cash,transfer,qris,ewallet,tempo',
             'paid' => 'required|numeric|min:0',
             'discount_amount' => 'numeric|min:0',
             'discount_percent' => 'numeric|min:0|max:100',
@@ -108,11 +109,14 @@ class PosController extends Controller
                 $paymentStatus = $paid > 0 ? 'partial' : 'unpaid';
             }
 
+            $shift = $request->user()->shifts()->where('status', 'open')->first();
+            
             $sale = Sale::create([
                 'invoice_number' => Sale::generateInvoiceNumber(),
                 'customer_id' => $validated['customer_id'],
                 'warehouse_id' => $validated['warehouse_id'],
                 'user_id' => $request->user()->id,
+                'shift_id' => $shift ? $shift->id : null,
                 'sale_date' => now()->toDateString(),
                 'due_date' => $validated['payment_type'] === 'tempo' ? now()->addDays(30)->toDateString() : null,
                 'subtotal' => $subtotal,

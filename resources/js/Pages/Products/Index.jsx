@@ -1,6 +1,6 @@
-import { Head, Link, router } from '@inertiajs/react';
+import { Head, Link, router, useForm } from '@inertiajs/react';
 import AppLayout from '@/Layouts/AppLayout';
-import { Plus, Search, Edit2, Trash2, Package, Filter } from 'lucide-react';
+import { Plus, Search, Edit2, Trash2, Package, Filter, DownloadCloud, UploadCloud, FileSpreadsheet } from 'lucide-react';
 import { formatCurrency } from '@/Utils/format';
 import { Badge, Pagination, Modal, Button } from '@/Components/UI';
 import { useState } from 'react';
@@ -8,6 +8,11 @@ import { useState } from 'react';
 export default function ProductIndex({ products, categories, filters }) {
     const [search, setSearch] = useState(filters.search || '');
     const [deleteTarget, setDeleteTarget] = useState(null);
+    const [showImport, setShowImport] = useState(false);
+    
+    const { data: importData, setData: setImportData, post: postImport, processing: importProcessing, errors: importErrors, reset: resetImport } = useForm({
+        file: null,
+    });
 
     const handleSearch = (e) => {
         e.preventDefault();
@@ -25,6 +30,20 @@ export default function ProductIndex({ products, categories, filters }) {
         });
     };
 
+    const handleExport = () => {
+        window.location.href = route('products.export');
+    };
+
+    const submitImport = (e) => {
+        e.preventDefault();
+        postImport(route('products.import'), {
+            onSuccess: () => {
+                setShowImport(false);
+                resetImport();
+            }
+        });
+    };
+
     return (
         <AppLayout title="Produk">
             <Head title="Produk" />
@@ -35,12 +54,20 @@ export default function ProductIndex({ products, categories, filters }) {
                     <h2 className="text-2xl font-bold text-slate-900">Manajemen Produk</h2>
                     <p className="text-sm text-slate-500 mt-1">Kelola inventori dan data produk</p>
                 </div>
-                <Link
-                    href={route('products.create')}
-                    className="inline-flex items-center gap-2 bg-gradient-to-r from-blue-600 to-blue-500 text-white px-5 py-2.5 rounded-xl font-semibold text-sm shadow-md hover:shadow-lg transition-all"
-                >
-                    <Plus className="w-4 h-4" /> Tambah Produk
-                </Link>
+                <div className="flex flex-wrap gap-2">
+                    <button onClick={() => setShowImport(true)} className="inline-flex items-center gap-2 bg-white border border-slate-200 text-slate-700 px-4 py-2.5 rounded-xl font-semibold text-sm shadow-sm hover:bg-slate-50 transition-all">
+                        <UploadCloud className="w-4 h-4" /> Import Excel
+                    </button>
+                    <button onClick={handleExport} className="inline-flex items-center gap-2 bg-emerald-600 border border-emerald-500 text-emerald-50 px-4 py-2.5 rounded-xl font-semibold text-sm hover:bg-emerald-700 transition-all shadow-sm">
+                        <FileSpreadsheet className="w-4 h-4" /> Export Excel
+                    </button>
+                    <Link
+                        href={route('products.create')}
+                        className="inline-flex items-center gap-2 bg-gradient-to-r from-blue-600 to-blue-500 text-white px-5 py-2.5 rounded-xl font-semibold text-sm shadow-md hover:shadow-lg transition-all"
+                    >
+                        <Plus className="w-4 h-4" /> Tambah Produk
+                    </Link>
+                </div>
             </div>
 
             {/* Filters */}
@@ -176,6 +203,29 @@ export default function ProductIndex({ products, categories, filters }) {
                     <Button variant="secondary" onClick={() => setDeleteTarget(null)}>Batal</Button>
                     <Button variant="danger" onClick={handleDelete}>Hapus</Button>
                 </div>
+            </Modal>
+
+            {/* Import Excel Modal */}
+            <Modal show={showImport} onClose={() => setShowImport(false)} title="Import Data Excel" maxWidth="md">
+                <form onSubmit={submitImport} className="space-y-4">
+                    <p className="text-sm text-slate-600">Pastikan Anda menggunakan format Excel yang sudah kami sediakan agar data stok dan detail barang terbaca sempurna.</p>
+                    <div className="bg-blue-50 border border-blue-100 p-3 rounded-lg flex items-start gap-3">
+                        <FileSpreadsheet className="w-5 h-5 text-blue-600 shrink-0 mt-0.5" />
+                        <div>
+                            <p className="text-sm font-semibold text-slate-800">Unduh Format Template</p>
+                            <a href={route('products.template')} className="text-xs text-blue-600 hover:text-blue-800 font-medium hover:underline">Klik disini untuk mengunduh template Excel (.xlsx)</a>
+                        </div>
+                    </div>
+                    <div>
+                        <label className="block text-sm font-bold text-slate-700 mb-2">Upload File Excel Anda</label>
+                        <input type="file" accept=".xlsx,.xls,.cvs" onChange={e => setImportData('file', e.target.files[0])} className="w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100 focus:outline-none" />
+                        {importErrors.file && <p className="text-rose-500 text-xs mt-1">{importErrors.file}</p>}
+                    </div>
+                    <div className="flex justify-end gap-3 mt-6">
+                        <Button type="button" variant="secondary" onClick={() => setShowImport(false)}>Batal</Button>
+                        <Button type="submit" disabled={importProcessing || !importData.file} className="bg-emerald-600 hover:bg-emerald-700 text-white">Import Data</Button>
+                    </div>
+                </form>
             </Modal>
         </AppLayout>
     );

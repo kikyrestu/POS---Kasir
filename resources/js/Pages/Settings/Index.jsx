@@ -26,8 +26,7 @@ const SETTINGS_FIELDS = {
         { key: 'receipt_paper_size', label: 'Ukuran Kertas', type: 'select', options: ['58mm', '80mm', 'A4'] },
     ],
     printer: [
-        { key: 'printer_name', label: 'Nama Printer', type: 'text' },
-        { key: 'printer_auto_print', label: 'Auto Print', type: 'checkbox' },
+        { key: 'printer_auto_print', label: 'Otomatis Buka Print Dialog', type: 'checkbox' },
     ],
     notifikasi: [
         { key: 'notif_low_stock', label: 'Notifikasi Stok Rendah', type: 'checkbox' },
