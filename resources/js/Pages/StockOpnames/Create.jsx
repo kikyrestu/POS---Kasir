@@ -1,67 +1,112 @@
 import { Head, Link, useForm } from '@inertiajs/react';
 import AppLayout from '@/Layouts/AppLayout';
-import { ArrowLeft, Save, Plus, Trash2, Search, Package } from 'lucide-react';
+import { ArrowLeft, Save, Search, Package } from 'lucide-react';
 import { Button, Input } from '@/Components/UI';
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import axios from 'axios';
 
 export default function StockOpnameCreate({ warehouses }) {
-    const { data, setData, post, processing, errors } = useForm({
+    const { data, setData, post, processing, errors, transform } = useForm({
         warehouse_id: warehouses.length === 1 ? warehouses[0].id : '',
         adjustment_date: new Date().toISOString().split('T')[0],
         items: []
     });
 
+    const [loadedProducts, setLoadedProducts] = useState([]);
+    const [page, setPage] = useState(1);
+    const [hasMore, setHasMore] = useState(true);
+    const [isLoading, setIsLoading] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
-    const [searchResults, setSearchResults] = useState([]);
-    const [isSearching, setIsSearching] = useState(false);
     const searchTimeout = useRef(null);
+
+    // Filter submit data to only include items with adjusted quantities
+    transform((data) => ({
+        ...data,
+        items: data.items.filter(i => i.quantity > 0)
+    }));
+
+    const fetchProducts = async (pageNum, query = '', append = false) => {
+        setIsLoading(true);
+        try {
+            const res = await axios.get(route('products.search'), { 
+                params: { page: pageNum, query } 
+            });
+            const newProducts = res.data.data;
+            if (append) {
+                setLoadedProducts(prev => [...prev, ...newProducts]);
+            } else {
+                setLoadedProducts(newProducts);
+            }
+            setHasMore(newProducts.length > 0 && res.data.current_page < res.data.last_page);
+        } catch (err) {
+            console.error('Error fetching products:', err);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        fetchProducts(1, searchQuery, false);
+    }, [searchQuery]);
+
+    const observer = useRef();
+    const lastProductElementRef = useCallback(node => {
+        if (isLoading) return;
+        if (observer.current) observer.current.disconnect();
+        observer.current = new IntersectionObserver(entries => {
+            if (entries[0].isIntersecting && hasMore) {
+                const nextPage = page + 1;
+                setPage(nextPage);
+                fetchProducts(nextPage, searchQuery, true);
+            }
+        });
+        if (node) observer.current.observe(node);
+    }, [isLoading, hasMore, page, searchQuery]);
 
     const handleSearch = (e) => {
         const query = e.target.value;
-        setSearchQuery(query);
-        
         if (searchTimeout.current) clearTimeout(searchTimeout.current);
-        if (!query.trim()) {
-            setSearchResults([]);
-            return;
-        }
-
-        setIsSearching(true);
-        searchTimeout.current = setTimeout(async () => {
-            try {
-                const res = await axios.get(route('products.search'), { params: { query } });
-                setSearchResults(res.data);
-            } catch (err) {
-                console.error(err);
-            } finally {
-                setIsSearching(false);
-            }
+        searchTimeout.current = setTimeout(() => {
+            setSearchQuery(query);
+            setPage(1);
         }, 300);
     };
 
-    const addItem = (product) => {
-        if (data.items.some(i => i.product_id === product.id)) return;
-        setData('items', [
-            ...data.items,
-            { product_id: product.id, name: product.name, type: 'addition', quantity: 1, reason: '' }
-        ]);
-        setSearchQuery('');
-        setSearchResults([]);
+    const getItemData = (product_id) => {
+        return data.items.find(i => i.product_id === product_id) || {
+            product_id,
+            type: 'addition',
+            quantity: 0,
+            reason: ''
+        };
     };
 
-    const removeItem = (index) => {
-        setData('items', data.items.filter((_, i) => i !== index));
-    };
-
-    const updateItem = (index, field, value) => {
+    const updateItem = (product, field, value) => {
+        const existingIndex = data.items.findIndex(i => i.product_id === product.id);
         const newItems = [...data.items];
-        newItems[index][field] = value;
+        
+        if (existingIndex >= 0) {
+            newItems[existingIndex][field] = value;
+        } else {
+            newItems.push({
+                product_id: product.id,
+                type: 'addition',
+                quantity: 0,
+                reason: '',
+                [field]: value
+            });
+        }
         setData('items', newItems);
     };
 
     const handleSubmit = (e) => {
         e.preventDefault();
+        
+        if (data.items.filter(i => i.quantity > 0).length === 0) {
+            alert('Masukkan angka penyesuaian (kuantitas) minimal pada 1 produk sebelum menyimpan.');
+            return;
+        }
+
         post(route('stock-opnames.store'));
     };
 
@@ -75,14 +120,14 @@ export default function StockOpnameCreate({ warehouses }) {
                 </Link>
                 <div>
                     <h2 className="text-2xl font-bold text-slate-900">Buat Penyesuaian Stok</h2>
-                    <p className="text-sm text-slate-500 mt-1">Manual catat plus/minus stok fisik ke sistem</p>
+                    <p className="text-sm text-slate-500 mt-1">Sesuaikan stok fisik toko dengan sistem (Lazy Loaded)</p>
                 </div>
             </div>
 
             <form onSubmit={handleSubmit} className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 {/* Left Col - Info */}
                 <div className="lg:col-span-1 space-y-6">
-                    <div className="bg-white/80 backdrop-blur-sm border border-slate-200/60 rounded-2xl p-6 shadow-sm">
+                    <div className="bg-white/80 backdrop-blur-sm border border-slate-200/60 rounded-2xl p-6 shadow-sm sticky top-6">
                         <h3 className="font-bold text-slate-800 mb-5 border-b border-slate-100 pb-3">Informasi Utama</h3>
                         
                         <div className="space-y-4">
@@ -96,6 +141,18 @@ export default function StockOpnameCreate({ warehouses }) {
                             </div>
 
                             <Input type="date" label="Tanggal Penyesuaian" required value={data.adjustment_date} onChange={e => setData('adjustment_date', e.target.value)} error={errors.adjustment_date} />
+                            
+                            <div className="pt-4 border-t border-slate-100">
+                                <div className="flex justify-between items-center mb-4">
+                                    <span className="text-sm text-slate-500">Produk Disesuaikan</span>
+                                    <span className="font-bold text-blue-600 bg-blue-50 px-3 py-1 rounded-lg">
+                                        {data.items.filter(i => i.quantity > 0).length} Item
+                                    </span>
+                                </div>
+                                <Button type="submit" disabled={processing} className="w-full gap-2">
+                                    <Save className="w-4 h-4" /> {processing ? 'Menyimpan...' : 'Simpan Opname'}
+                                </Button>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -103,77 +160,86 @@ export default function StockOpnameCreate({ warehouses }) {
                 {/* Right Col - Items */}
                 <div className="lg:col-span-2 space-y-6">
                     <div className="bg-white/80 backdrop-blur-sm border border-slate-200/60 rounded-2xl p-6 shadow-sm">
-                        <h3 className="font-bold text-slate-800 mb-5 border-b border-slate-100 pb-3">Daftar Produk Opname</h3>
+                        <h3 className="font-bold text-slate-800 mb-5 border-b border-slate-100 pb-3">Daftar Produk</h3>
                         
-                        {/* Auto-complete Search */}
                         <div className="relative mb-6">
-                            <div className="relative">
-                                <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
-                                <input
-                                    type="text"
-                                    value={searchQuery}
-                                    onChange={handleSearch}
-                                    placeholder="Cari produk (ketik minimal 3 huruf)..."
-                                    className="w-full pl-12 pr-4 py-4 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/30 text-slate-700 font-medium"
-                                />
-                                {isSearching && <div className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />}
-                            </div>
+                            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                            <input
+                                type="text"
+                                onChange={handleSearch}
+                                placeholder="Cari spesifik (opsional)..."
+                                className="w-full pl-12 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/30 text-slate-700 font-medium text-sm"
+                            />
+                        </div>
 
-                            {searchResults.length > 0 && (
-                                <div className="absolute z-10 w-full mt-2 bg-white border border-slate-200 rounded-xl shadow-xl max-h-60 overflow-y-auto">
-                                    {searchResults.map(p => (
-                                        <button key={p.id} type="button" onClick={() => addItem(p)} className="w-full text-left px-4 py-3 border-b border-slate-50 hover:bg-slate-50 flex items-center justify-between transition-colors">
-                                            <div className="flex items-center gap-3">
-                                                <div className="w-8 h-8 rounded-lg bg-blue-100 text-blue-600 flex items-center justify-center">
-                                                    <Package className="w-4 h-4" />
-                                                </div>
-                                                <div>
-                                                    <p className="font-semibold text-slate-800 text-sm">{p.name}</p>
-                                                    <p className="text-xs text-slate-500">{p.code}</p>
-                                                </div>
+                        {/* List Area */}
+                        <div className="space-y-3 max-h-[600px] overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-slate-200">
+                            {loadedProducts.length === 0 && !isLoading && (
+                                <div className="flex flex-col items-center justify-center py-10 bg-slate-50 rounded-xl border border-dashed border-slate-200 text-slate-400">
+                                    <Package className="w-10 h-10 mb-3 opacity-30" />
+                                    <p className="text-sm">Tidak ada produk ditemukan.</p>
+                                </div>
+                            )}
+                            
+                            {loadedProducts.map((product, index) => {
+                                const itemData = getItemData(product.id);
+                                const isLastElement = loadedProducts.length === index + 1;
+                                
+                                const systemStock = product.stocks?.find(s => s.warehouse_id === parseInt(data.warehouse_id))?.quantity || 0;
+
+                                return (
+                                    <div 
+                                        ref={isLastElement ? lastProductElementRef : null}
+                                        key={product.id} 
+                                        className={`flex flex-col xl:flex-row xl:items-center gap-4 p-4 border rounded-xl transition-colors ${itemData.quantity > 0 ? 'bg-blue-50/50 border-blue-200 shadow-sm' : 'bg-white border-slate-100 hover:border-slate-300'}`}
+                                    >
+                                        <div className="flex-1 min-w-[200px]">
+                                            <p className="font-bold text-slate-800 text-sm">{product.name}</p>
+                                            <p className="text-xs text-slate-500 mt-1">Stok Sistem: <span className="font-bold text-slate-700">{systemStock} {product.unit}</span></p>
+                                        </div>
+                                        
+                                        <div className="flex flex-wrap items-center gap-3 w-full xl:w-auto">
+                                            <select 
+                                                value={itemData.type} 
+                                                onChange={e => updateItem(product, 'type', e.target.value)} 
+                                                className="bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30 shrink-0"
+                                            >
+                                                <option value="addition">Tambah (+)</option>
+                                                <option value="subtraction">Kurang (-)</option>
+                                            </select>
+                                            
+                                            <div className="flex items-center shrink-0">
+                                                <input 
+                                                    type="number" 
+                                                    min="0" 
+                                                    placeholder="Qty"
+                                                    value={itemData.quantity || ''} 
+                                                    onChange={e => updateItem(product, 'quantity', parseInt(e.target.value) || 0)} 
+                                                    className={`w-20 text-center py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/30 text-sm font-mono font-bold ${itemData.quantity > 0 ? 'bg-white border-blue-300 text-blue-700' : 'bg-slate-50 border-slate-200'}`} 
+                                                />
                                             </div>
-                                        </button>
+                                            
+                                            <input 
+                                                type="text" 
+                                                placeholder="Alasan (Opsional)" 
+                                                value={itemData.reason} 
+                                                onChange={e => updateItem(product, 'reason', e.target.value)} 
+                                                className="flex-1 xl:w-40 py-2 px-3 bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/30 text-sm" 
+                                            />
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                            
+                            {/* Skeleton Loader */}
+                            {isLoading && (
+                                <div className="flex flex-col gap-3 mt-4">
+                                    {[1,2,3].map(i => (
+                                        <div key={i} className="animate-pulse bg-slate-100 border border-slate-200 h-24 w-full rounded-xl"></div>
                                     ))}
                                 </div>
                             )}
                         </div>
-
-                        {/* Selected Items */}
-                        <div className="overflow-x-auto space-y-3">
-                            {data.items.length === 0 && <div className="text-center py-10 bg-slate-50 rounded-xl border border-dashed border-slate-200 text-slate-400 text-sm">Gunakan kolom pencarian di atas untuk menambahkan produk.</div>}
-                            
-                            {data.items.map((item, index) => (
-                                <div key={index} className="flex flex-col sm:flex-row items-center gap-4 p-4 border border-slate-100 rounded-xl bg-white shadow-sm hover:border-slate-300 transition-colors">
-                                    <div className="flex-1 min-w-[200px]">
-                                        <p className="font-semibold text-slate-800 text-sm">{item.name}</p>
-                                    </div>
-                                    <div className="flex items-center gap-3 w-full sm:w-auto overflow-x-auto">
-                                        <select value={item.type} onChange={e => updateItem(index, 'type', e.target.value)} className="bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30">
-                                            <option value="addition">Tambah (+)</option>
-                                            <option value="subtraction">Kurang (-)</option>
-                                        </select>
-                                        
-                                        <div className="flex items-center">
-                                            <input type="number" min="1" value={item.quantity} onChange={e => updateItem(index, 'quantity', parseInt(e.target.value) || 1)} className="w-20 text-center py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/30 text-sm font-mono font-bold" />
-                                        </div>
-                                        
-                                        <input type="text" placeholder="Catatan/Alasan" value={item.reason} onChange={e => updateItem(index, 'reason', e.target.value)} className="w-40 py-2 px-3 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/30 text-sm" />
-                                        
-                                        <button type="button" onClick={() => removeItem(index)} className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors shrink-0">
-                                            <Trash2 className="w-4 h-4" />
-                                        </button>
-                                    </div>
-                                    {errors[`items.${index}.quantity`] && <p className="text-xs text-rose-500">{errors[`items.${index}.quantity`]}</p>}
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-
-                    <div className="flex justify-end gap-3 pt-4">
-                        <Link href={route('stock-opnames.index')} className="px-6 py-2.5 rounded-xl font-semibold text-sm text-slate-600 hover:bg-slate-100 transition-colors">Batal</Link>
-                        <Button type="submit" disabled={processing || data.items.length === 0} className="w-full sm:w-auto px-8 gap-2">
-                            <Save className="w-4 h-4" /> {processing ? 'Menyimpan...' : 'Simpan Opname'}
-                        </Button>
                     </div>
                 </div>
             </form>

@@ -1,0 +1,41 @@
+version: '3.8'
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: buildypos-app:latest
+    container_name: buildypos_app
+    ports:
+      - "${APP_PORT:-8080}:80"
+    environment:
+      - APP_NAME=BuildyPOS
+      - APP_ENV=production
+      - APP_KEY=${APP_KEY}
+      - APP_DEBUG=false
+      - APP_URL=http://posdemo.buildyweb.com
+      - DB_CONNECTION=mysql
+      - DB_HOST=db
+      - DB_PORT=3306
+      - DB_DATABASE=${DB_DATABASE:-pos_db}
+      - DB_USERNAME=${DB_USERNAME:-root}
+      - DB_PASSWORD=${DB_PASSWORD:-root}
+    depends_on:
+      - db
+    restart: unless-stopped
+
+  db:
+    image: mysql:8.0
+    container_name: buildypos_db
+    ports:
+      - "${DB_PORT_EXTERNAL:-33061}:3306"
+    environment:
+      - MYSQL_DATABASE=${DB_DATABASE:-pos_db}
+      - MYSQL_ROOT_PASSWORD=${DB_PASSWORD:-root}
+    volumes:
+      - db_data:/var/lib/mysql
+    restart: unless-stopped
+
+volumes:
+  db_data:

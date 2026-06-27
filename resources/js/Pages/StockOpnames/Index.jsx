@@ -38,8 +38,9 @@ export default function StockOpnameIndex({ adjustments, warehouses, filters }) {
                 </select>
             </div>
 
-            <div className="bg-white/80 backdrop-blur-sm border border-slate-200/60 rounded-2xl overflow-hidden">
-                <div className="overflow-x-auto">
+            <div className="bg-white/80 backdrop-blur-sm border border-slate-200/60 rounded-2xl overflow-hidden mt-6">
+                {/* Desktop Table */}
+                <div className="overflow-x-auto hidden md:block">
                     <table className="w-full text-left">
                         <thead>
                             <tr className="bg-slate-50/80 text-slate-500 text-xs uppercase tracking-wider border-b border-slate-200">
@@ -80,6 +81,53 @@ export default function StockOpnameIndex({ adjustments, warehouses, filters }) {
                         </tbody>
                     </table>
                 </div>
+
+                {/* Mobile Cards */}
+                <div className="grid grid-cols-1 gap-4 md:hidden p-4 bg-slate-50/50">
+                    {adjustments.data?.length > 0 ? adjustments.data.map((adj) => (
+                        <div key={adj.id} className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm flex flex-col gap-3 relative">
+                            <div className="flex items-start justify-between gap-2">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 rounded-lg bg-orange-100 text-orange-600 flex items-center justify-center shrink-0">
+                                        <ClipboardList className="w-5 h-5" />
+                                    </div>
+                                    <div>
+                                        <p className="font-bold text-slate-900 text-sm">{adj.product?.name}</p>
+                                        <p className="text-xs text-slate-500">{adj.warehouse?.name}</p>
+                                    </div>
+                                </div>
+                                <div className="text-right shrink-0">
+                                    <p className="text-[10px] text-slate-400">{adj.adjustment_date}</p>
+                                    <p className="text-[10px] text-slate-400">Oleh: {adj.user?.name?.split(' ')[0]}</p>
+                                </div>
+                            </div>
+                            
+                            <div className="flex items-center justify-between bg-slate-50 rounded-lg p-3 border border-slate-100">
+                                <div>
+                                    <Badge variant={adj.type === 'addition' ? 'success' : 'danger'}>
+                                        {adj.type === 'addition' ? 'Penambahan (+)' : 'Pengurangan (-)'}
+                                    </Badge>
+                                </div>
+                                <div className="text-right">
+                                    <p className="text-[10px] font-semibold text-slate-500 uppercase mb-0.5">Jumlah</p>
+                                    <p className="font-mono font-bold text-slate-800 text-lg">{adj.quantity}</p>
+                                </div>
+                            </div>
+
+                            {adj.reason && (
+                                <div className="bg-slate-50/50 rounded-lg p-3 border border-dashed border-slate-200 text-xs text-slate-600">
+                                    <span className="font-semibold text-slate-700">Alasan:</span> {adj.reason}
+                                </div>
+                            )}
+                        </div>
+                    )) : (
+                        <div className="text-center py-10 text-slate-400 bg-white rounded-xl border border-dashed border-slate-300">
+                            <ClipboardList className="w-12 h-12 mx-auto text-slate-300 mb-3 opacity-50" />
+                            <p className="text-sm font-medium">Belum ada catatan penyesuaian stok.</p>
+                        </div>
+                    )}
+                </div>
+
                 {adjustments.links && <Pagination links={adjustments.links} />}
             </div>
         </AppLayout>

@@ -1,15 +1,17 @@
 import { Head, Link, router, usePage } from '@inertiajs/react';
 import { useState, useRef, useEffect, useCallback } from 'react';
 import axios from 'axios';
+import { Toaster, toast } from 'sonner';
 import {
     Search, ShoppingCart, Plus, Minus, Trash2, X, User, CreditCard,
     Banknote, Receipt as ReceiptIcon, Package, Grid3X3, ChevronDown, AlertCircle, CheckCircle2, ArrowLeft, Printer, Lock
 } from 'lucide-react';
 import { formatCurrency, formatNumber } from '@/Utils/format';
 import ReceiptComponent from '@/Components/Receipt';
+import DynamicIcon from '@/Components/DynamicIcon';
 
 export default function PosIndex({ customers, categories, warehouses, defaultWarehouseId, invoiceNumber, initialActiveShift }) {
-    const { auth } = usePage().props;
+    const { auth, global_settings } = usePage().props;
 
     // Shift Logic States
     const [activeShift, setActiveShift] = useState(initialActiveShift);
@@ -21,6 +23,7 @@ export default function PosIndex({ customers, categories, warehouses, defaultWar
     const [shiftClosingNotes, setShiftClosingNotes] = useState('');
     
     // State
+    const [isCartOpenMobile, setIsCartOpenMobile] = useState(false);
     const [search, setSearch] = useState('');
     const [products, setProducts] = useState([]);
     const [loading, setLoading] = useState(false);
@@ -32,23 +35,27 @@ export default function PosIndex({ customers, categories, warehouses, defaultWar
     const [paymentType, setPaymentType] = useState('cash');
     const [paidAmount, setPaidAmount] = useState('');
     const [discount, setDiscount] = useState(0);
-    const [discountType, setDiscountType] = useState('amount');
     const [tax, setTax] = useState(0);
     const [notes, setNotes] = useState('');
     const [processing, setProcessing] = useState(false);
     const [receipt, setReceipt] = useState(null);
     const [receiptMeta, setReceiptMeta] = useState({ store: {}, cashier: '' });
-    const [notification, setNotification] = useState(null);
     const receiptRef = useRef(null);
 
     const searchRef = useRef(null);
     const searchTimeout = useRef(null);
 
     // Calculations
+    const discountFormat = global_settings?.discount_format || 'amount';
+    const taxFormat = global_settings?.tax_format || 'amount';
+
     const subtotal = cart.reduce((sum, i) => sum + (i.unit_price * i.quantity) - i.discount, 0);
-    const discountAmount = discountType === 'percent' ? subtotal * (discount / 100) : discount;
-    const totalTax = tax;
-    const grandTotal = subtotal - discountAmount + totalTax;
+    const discountAmount = discountFormat === 'percent' ? subtotal * (discount / 100) : discount;
+    
+    const taxableAmount = subtotal - discountAmount;
+    const totalTax = taxFormat === 'percent' ? taxableAmount * (tax / 100) : tax;
+    
+    const grandTotal = taxableAmount + totalTax;
     const paid = parseFloat(paidAmount) || 0;
     const change = Math.max(0, paid - grandTotal);
 
@@ -206,8 +213,11 @@ export default function PosIndex({ customers, categories, warehouses, defaultWar
     };
 
     const showNotification = (message, type = 'success') => {
-        setNotification({ message, type });
-        setTimeout(() => setNotification(null), 3000);
+        if (type === 'error') {
+            toast.error(message);
+        } else {
+            toast.success(message);
+        }
     };
 
     // Payment
@@ -233,9 +243,9 @@ export default function PosIndex({ customers, categories, warehouses, defaultWar
                 warehouse_id: selectedWarehouse,
                 payment_type: paymentType,
                 paid: paid,
-                discount_amount: discountType === 'amount' ? discount : 0,
-                discount_percent: discountType === 'percent' ? discount : 0,
-                tax: tax,
+                discount_amount: discountFormat === 'amount' ? discount : 0,
+                discount_percent: discountFormat === 'percent' ? discount : 0,
+                tax: totalTax,
                 notes: notes,
                 items: cart.map(i => ({
                     product_id: i.product_id,
@@ -266,6 +276,7 @@ export default function PosIndex({ customers, categories, warehouses, defaultWar
         clearCart();
         setPaidAmount('');
         searchProducts('', null);
+        setIsCartOpenMobile(false);
         router.reload({ only: ['invoiceNumber'] });
     };
 
@@ -277,33 +288,25 @@ export default function PosIndex({ customers, categories, warehouses, defaultWar
             <Head title="POS Kasir" />
 
             {/* Notification */}
-            {notification && (
-                <div className={`fixed top-4 right-4 z-[100] flex items-center gap-3 px-5 py-3 rounded-xl shadow-lg border backdrop-blur-sm text-sm font-semibold animate-slide-in ${
-                    notification.type === 'error'
-                        ? 'bg-rose-50/90 border-rose-200 text-rose-700'
-                        : 'bg-emerald-50/90 border-emerald-200 text-emerald-700'
-                }`}>
-                    {notification.type === 'error' ? <AlertCircle className="w-5 h-5" /> : <CheckCircle2 className="w-5 h-5" />}
-                    {notification.message}
-                </div>
-            )}
+            <Toaster richColors position="top-right" />
 
-            <div className="h-screen flex flex-col md:flex-row bg-slate-50/80">
+            <div className="h-screen flex bg-slate-50/80 relative overflow-hidden">
                 {/* LEFT - Product Panel */}
-                <div className="flex-1 flex flex-col overflow-hidden">
-                    {/* Header */}
-                    <div className="bg-white/90 backdrop-blur-sm border-b border-slate-200/60 px-5 py-3">
-                        <div className="flex items-center justify-between gap-4">
-                            <div className="flex items-center gap-3">
-                                <Link href={route('dashboard')} className="w-8 h-8 bg-slate-100 hover:bg-slate-200 rounded-lg flex items-center justify-center transition-colors" title="Kembali ke Dashboard">
+                <div className="flex-1 flex flex-col overflow-hidden relative">
+                    {/* Header Layout Baru */}
+                    <div className="bg-white/90 backdrop-blur-sm border-b border-slate-200/60 p-3 lg:px-5 lg:py-3 flex flex-col gap-3">
+                        <div className="flex items-center justify-between gap-2 lg:gap-4">
+                            {/* Judul & Tombol Kembali */}
+                            <div className="flex items-center gap-2 lg:gap-3 shrink-0">
+                                <Link href={route('dashboard')} className="w-8 h-8 bg-slate-100 hover:bg-slate-200 rounded-lg flex items-center justify-center shrink-0 transition-colors" title="Kembali ke Dashboard">
                                     <ArrowLeft className="w-4 h-4 text-slate-600" />
                                 </Link>
-                                <div className="w-8 h-8 bg-gradient-to-br from-blue-600 to-teal-500 rounded-lg flex items-center justify-center">
+                                <div className="w-8 h-8 bg-gradient-to-br from-blue-600 to-teal-500 rounded-lg hidden sm:flex items-center justify-center shrink-0">
                                     <ReceiptIcon className="w-4 h-4 text-white" />
                                 </div>
                                 <div>
-                                    <div className="flex items-center gap-2">
-                                        <h1 className="text-lg font-bold text-slate-900">POS Kasir</h1>
+                                    <div className="flex flex-wrap items-center gap-2">
+                                        <h1 className="text-base lg:text-lg font-bold text-slate-900 leading-none">POS Kasir</h1>
                                         {activeShift && (
                                             <button 
                                                 onClick={async () => {
@@ -316,16 +319,16 @@ export default function PosIndex({ customers, categories, warehouses, defaultWar
                                                         alert('Gagal mengambil data shift.');
                                                     }
                                                 }}
-                                                className="px-2 py-0.5 bg-rose-50 border border-rose-200 text-rose-600 text-[10px] uppercase font-bold rounded hover:bg-rose-100 transition-colors"
+                                                className="px-2 py-0.5 bg-rose-50 border border-rose-200 text-rose-600 text-[10px] uppercase font-bold rounded hover:bg-rose-100 transition-colors shrink-0"
                                             >Tutup Shift</button>
                                         )}
                                     </div>
-                                    <p className="text-xs text-slate-400 font-mono">{invoiceNumber}</p>
+                                    <p className="text-[10px] lg:text-xs text-slate-400 font-mono mt-0.5 leading-none">{invoiceNumber}</p>
                                 </div>
                             </div>
 
-                            {/* Search */}
-                            <div className="flex-1 max-w-lg relative">
+                            {/* Desktop Search (Sembunyi di Mobile) */}
+                            <div className="hidden lg:block flex-1 max-w-lg relative">
                                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                                 <input
                                     ref={searchRef}
@@ -338,16 +341,28 @@ export default function PosIndex({ customers, categories, warehouses, defaultWar
                             </div>
 
                             {/* Warehouse selector */}
-                            <div className="relative">
+                            <div className="relative shrink-0">
                                 <select
                                     value={selectedWarehouse || ''}
                                     onChange={e => setSelectedWarehouse(parseInt(e.target.value))}
-                                    className="appearance-none bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 pr-8 text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500/30"
+                                    className="appearance-none bg-slate-50 border border-slate-200 rounded-xl pl-3 pr-8 py-2 text-xs lg:text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500/30"
                                 >
                                     {warehouses.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
                                 </select>
                                 <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
                             </div>
+                        </div>
+
+                        {/* Mobile Search (Tampil khusus di Mobile) */}
+                        <div className="block lg:hidden relative w-full">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                            <input
+                                type="text"
+                                value={search}
+                                onChange={e => handleSearch(e.target.value)}
+                                placeholder="Cari produk atau scan barcode..."
+                                className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 transition-all placeholder:text-slate-400"
+                            />
                         </div>
 
                         {/* Category tabs */}
@@ -372,7 +387,7 @@ export default function PosIndex({ customers, categories, warehouses, defaultWar
                                             : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                                     }`}
                                 >
-                                    {cat.icon && <span className="mr-1">{cat.icon}</span>}
+                                    {cat.icon && <DynamicIcon name={cat.icon} className="w-4 h-4 mr-1 inline-block" />}
                                     {cat.name}
                                 </button>
                             ))}
@@ -380,7 +395,7 @@ export default function PosIndex({ customers, categories, warehouses, defaultWar
                     </div>
 
                     {/* Product Grid */}
-                    <div className="flex-1 overflow-y-auto p-5">
+                    <div className="flex-1 overflow-y-auto p-4 lg:p-5 pb-24 lg:pb-5 custom-scrollbar">
                         {loading ? (
                             <div className="flex items-center justify-center h-full">
                                 <div className="w-8 h-8 border-3 border-blue-200 border-t-blue-600 rounded-full animate-spin" />
@@ -433,13 +448,34 @@ export default function PosIndex({ customers, categories, warehouses, defaultWar
                             </div>
                         )}
                     </div>
+
+                    {/* Mobile Floating Cart Trigger */}
+                    <div className="lg:hidden absolute bottom-0 left-0 right-0 p-4 bg-white border-t border-slate-200 shadow-[0_-10px_30px_rgba(0,0,0,0.05)] z-30 flex items-center justify-between pb-safe">
+                        <div>
+                            <p className="text-xs text-slate-500 font-semibold mb-0.5">{cart.length} Item di Keranjang</p>
+                            <p className="text-lg font-bold text-blue-600">{formatCurrency(grandTotal)}</p>
+                        </div>
+                        <button 
+                            onClick={() => setIsCartOpenMobile(true)}
+                            className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-xl font-bold text-sm shadow-md flex items-center gap-2 transition-colors"
+                        >
+                            <ShoppingCart className="w-4 h-4" />
+                            Lihat Keranjang
+                        </button>
+                    </div>
                 </div>
 
                 {/* RIGHT - Cart Panel */}
-                <div className="w-full md:w-[420px] h-1/2 md:h-full bg-white border-t md:border-t-0 md:border-l border-slate-200/60 flex flex-col shrink-0">
+                {/* Overlay for Mobile */}
+                <div className={`fixed inset-0 z-40 bg-slate-900/40 backdrop-blur-sm transition-opacity lg:hidden ${isCartOpenMobile ? 'opacity-100' : 'opacity-0 pointer-events-none'}`} onClick={() => setIsCartOpenMobile(false)} />
+                
+                <div className={`fixed inset-y-0 right-0 z-50 w-full md:w-[420px] bg-white lg:static lg:h-full border-l border-slate-200/60 flex flex-col shrink-0 transition-transform duration-300 ease-out ${isCartOpenMobile ? 'translate-x-0' : 'translate-x-full lg:translate-x-0'}`}>
                     {/* Cart Header */}
                     <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
                         <div className="flex items-center gap-2">
+                            <button onClick={() => setIsCartOpenMobile(false)} className="lg:hidden p-1 -ml-2 text-slate-500 hover:bg-slate-100 rounded-lg transition-colors">
+                                <ArrowLeft className="w-5 h-5" />
+                            </button>
                             <ShoppingCart className="w-5 h-5 text-blue-600" />
                             <h2 className="font-bold text-slate-900">Keranjang</h2>
                             <span className="bg-blue-50 text-blue-600 text-xs font-bold px-2 py-0.5 rounded-full">{cart.length}</span>
@@ -527,28 +563,22 @@ export default function PosIndex({ customers, categories, warehouses, defaultWar
                         {/* Discount & Tax */}
                         <div className="flex gap-2">
                             <div className="flex-1">
-                                <label className="text-xs font-semibold text-slate-500 mb-1 block">Diskon</label>
-                                <div className="flex">
-                                    <input
-                                        type="number"
-                                        value={discount || ''}
-                                        onChange={e => setDiscount(parseFloat(e.target.value) || 0)}
-                                        className="flex-1 bg-white border border-slate-200 rounded-l-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30 w-20"
-                                        placeholder="0"
-                                        min="0"
-                                    />
-                                    <select
-                                        value={discountType}
-                                        onChange={e => setDiscountType(e.target.value)}
-                                        className="bg-slate-100 border border-l-0 border-slate-200 rounded-r-lg px-2 py-1.5 text-xs font-semibold text-slate-600"
-                                    >
-                                        <option value="amount">Rp</option>
-                                        <option value="percent">%</option>
-                                    </select>
-                                </div>
+                                <label className="text-xs font-semibold text-slate-500 mb-1 block">
+                                    Diskon {discountFormat === 'percent' ? '(%)' : '(Rp)'}
+                                </label>
+                                <input
+                                    type="number"
+                                    value={discount || ''}
+                                    onChange={e => setDiscount(parseFloat(e.target.value) || 0)}
+                                    className="w-full bg-white border border-slate-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30"
+                                    placeholder="0"
+                                    min="0"
+                                />
                             </div>
                             <div className="flex-1">
-                                <label className="text-xs font-semibold text-slate-500 mb-1 block">Pajak (Rp)</label>
+                                <label className="text-xs font-semibold text-slate-500 mb-1 block">
+                                    Pajak {taxFormat === 'percent' ? '(%)' : '(Rp)'}
+                                </label>
                                 <input
                                     type="number"
                                     value={tax || ''}

@@ -64,7 +64,8 @@ export default function PurchaseIndex({ purchases, filters }) {
             </div>
 
             <div className="bg-white/80 backdrop-blur-sm border border-slate-200/60 rounded-2xl overflow-hidden">
-                <div className="overflow-x-auto">
+                {/* Desktop Table */}
+                <div className="overflow-x-auto hidden md:block">
                     <table className="w-full text-left">
                         <thead>
                             <tr className="bg-slate-50/80 text-slate-500 text-xs uppercase tracking-wider border-b border-slate-200">
@@ -109,6 +110,55 @@ export default function PurchaseIndex({ purchases, filters }) {
                         </tbody>
                     </table>
                 </div>
+
+                {/* Mobile Cards */}
+                <div className="grid grid-cols-1 gap-4 md:hidden p-4 bg-slate-50/50">
+                    {purchases.data?.length > 0 ? purchases.data.map(purchase => (
+                        <div key={purchase.id} className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm flex flex-col gap-3">
+                            <div className="flex justify-between items-start">
+                                <div>
+                                    <p className="font-mono font-bold text-slate-900">{purchase.invoice_number}</p>
+                                    <p className="text-xs text-slate-500 mt-0.5">{purchase.purchase_date}</p>
+                                </div>
+                                <div className="flex flex-col gap-1 items-end">
+                                    <Badge variant={statusMap[purchase.status]?.variant || 'default'}>{statusMap[purchase.status]?.label || purchase.status}</Badge>
+                                    <Badge variant={purchase.payment_status === 'paid' ? 'success' : purchase.payment_status === 'partial' ? 'warning' : 'danger'}>
+                                        {purchase.payment_status === 'paid' ? 'Lunas' : purchase.payment_status === 'partial' ? 'Sebagian' : 'Belum Bayar'}
+                                    </Badge>
+                                </div>
+                            </div>
+                            <div className="bg-slate-50 border border-slate-100 rounded-lg p-3 mt-1">
+                                <div className="flex justify-between items-center mb-2">
+                                    <span className="text-xs font-semibold text-slate-500">Supplier</span>
+                                    <span className="text-sm font-semibold text-slate-800">{purchase.supplier?.name || '-'}</span>
+                                </div>
+                                <div className="flex justify-between items-center pt-2 border-t border-slate-200">
+                                    <span className="text-xs font-semibold text-slate-500">Total</span>
+                                    <span className="text-lg font-mono font-bold text-blue-600">{formatCurrency(purchase.total)}</span>
+                                </div>
+                            </div>
+                            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+                                <Link
+                                    href={route('purchases.show', purchase.id)}
+                                    className="flex-1 py-2 text-center text-sm font-semibold text-slate-600 bg-white border border-slate-200 hover:bg-slate-50 rounded-lg transition-colors flex items-center justify-center gap-1.5"
+                                >
+                                    <Eye className="w-4 h-4" /> Detail
+                                </Link>
+                                <button
+                                    onClick={() => setDeleteTarget(purchase.id)}
+                                    className="flex-1 py-2 text-center text-sm font-semibold text-rose-600 bg-white border border-rose-200 hover:bg-rose-50 rounded-lg transition-colors flex items-center justify-center gap-1.5"
+                                >
+                                    <Trash2 className="w-4 h-4" /> Hapus
+                                </button>
+                            </div>
+                        </div>
+                    )) : (
+                        <div className="text-center py-8 text-slate-400 bg-white rounded-xl border border-dashed border-slate-300">
+                            <p className="text-sm font-medium">Belum ada data pembelian</p>
+                        </div>
+                    )}
+                </div>
+
                 {purchases.links && <Pagination links={purchases.links} />}
             </div>
 

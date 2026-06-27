@@ -163,11 +163,13 @@ class ProductController extends Controller
                       ->orWhere('code', 'like', "%{$s}%");
                 });
             })
-            ->when($request->category_id, fn($q, $c) => $q->where('category_id', $c))
-            ->limit(20)
-            ->get();
+            ->when($request->category_id, fn($q, $c) => $q->where('category_id', $c));
 
-        return response()->json($products);
+        if ($request->has('page')) {
+            return response()->json($products->paginate(20));
+        }
+
+        return response()->json($products->limit(20)->get());
     }
 
     public function export()

@@ -165,6 +165,8 @@ class DatabaseSeeder extends Seeder
             ['key' => 'notif_low_stock_threshold', 'value' => '10', 'group' => 'notifikasi'],
             ['key' => 'notif_due_payment', 'value' => '1', 'group' => 'notifikasi'],
             ['key' => 'notif_due_days_before', 'value' => '3', 'group' => 'notifikasi'],
+            ['key' => 'discount_format', 'value' => 'amount', 'group' => 'transaksi'],
+            ['key' => 'tax_format', 'value' => 'amount', 'group' => 'transaksi'],
         ];
         foreach ($defaultSettings as $setting) {
             Setting::create($setting);

@@ -104,7 +104,8 @@ export default function ProductIndex({ products, categories, filters }) {
 
             {/* Table */}
             <div className="bg-white/80 backdrop-blur-sm border border-slate-200/60 rounded-2xl overflow-hidden">
-                <div className="overflow-x-auto">
+                {/* Desktop Table */}
+                <div className="overflow-x-auto hidden md:block">
                     <table className="w-full text-left">
                         <thead>
                             <tr className="bg-slate-50/80 text-slate-500 text-xs uppercase tracking-wider border-b border-slate-200">
@@ -193,6 +194,70 @@ export default function ProductIndex({ products, categories, filters }) {
                         </tbody>
                     </table>
                 </div>
+
+                {/* Mobile Cards */}
+                <div className="grid grid-cols-1 gap-4 md:hidden p-4 bg-slate-50/50">
+                    {products.data.length > 0 ? products.data.map(product => {
+                        const totalStock = product.stocks?.reduce((s, st) => s + st.quantity, 0) || 0;
+                        return (
+                            <div key={product.id} className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm flex flex-col gap-3">
+                                <div className="flex gap-3">
+                                    <div className="w-16 h-16 bg-slate-50 rounded-xl flex items-center justify-center overflow-hidden shrink-0 border border-slate-100">
+                                        {product.image ? (
+                                            <img src={`/storage/${product.image}`} alt="" className="w-full h-full object-cover" />
+                                        ) : (
+                                            <Package className="w-8 h-8 text-slate-300" />
+                                        )}
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                        <div className="flex justify-between items-start">
+                                            <p className="font-bold text-slate-900 truncate">{product.name}</p>
+                                            <Badge variant={product.is_active ? 'success' : 'danger'}>{product.is_active ? 'Aktif' : 'Nonaktif'}</Badge>
+                                        </div>
+                                        <p className="text-xs text-slate-500 mt-0.5">{product.barcode || product.code || '-'}</p>
+                                        <p className="text-xs font-semibold text-slate-600 mt-1">{product.category?.name || 'Tanpa Kategori'}</p>
+                                    </div>
+                                </div>
+                                <div className="flex justify-between items-center bg-slate-50 rounded-lg p-2.5 border border-slate-100">
+                                    <div>
+                                        <p className="text-[10px] text-slate-500 uppercase tracking-wider font-semibold">Harga Jual</p>
+                                        <p className="font-bold text-blue-600">{formatCurrency(product.selling_price)}</p>
+                                    </div>
+                                    <div className="text-right">
+                                        <p className="text-[10px] text-slate-500 uppercase tracking-wider font-semibold">Stok</p>
+                                        <span className={`text-sm font-bold ${
+                                            totalStock <= 0 ? 'text-rose-600' :
+                                            totalStock <= (product.stock_minimum || 5) ? 'text-amber-600' :
+                                            'text-emerald-600'
+                                        }`}>
+                                            {totalStock} {product.unit}
+                                        </span>
+                                    </div>
+                                </div>
+                                <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+                                    <Link
+                                        href={route('products.edit', product.id)}
+                                        className="flex-1 py-2 text-center text-sm font-semibold text-slate-600 bg-white border border-slate-200 hover:bg-slate-50 rounded-lg transition-colors flex items-center justify-center gap-1.5"
+                                    >
+                                        <Edit2 className="w-4 h-4" /> Edit
+                                    </Link>
+                                    <button
+                                        onClick={() => setDeleteTarget(product.id)}
+                                        className="flex-1 py-2 text-center text-sm font-semibold text-rose-600 bg-white border border-rose-200 hover:bg-rose-50 rounded-lg transition-colors flex items-center justify-center gap-1.5"
+                                    >
+                                        <Trash2 className="w-4 h-4" /> Hapus
+                                    </button>
+                                </div>
+                            </div>
+                        );
+                    }) : (
+                        <div className="text-center py-8 text-slate-400 bg-white rounded-xl border border-dashed border-slate-300">
+                            <Package className="w-12 h-12 mx-auto mb-3 opacity-20" />
+                            <p className="text-sm font-medium">Tidak ada produk ditemukan</p>
+                        </div>
+                    )}
+                </div>
+
                 {products.links && <Pagination links={products.links} />}
             </div>
 

@@ -67,7 +67,8 @@ export default function SupplierIndex({ suppliers, filters }) {
             </div>
 
             <div className="bg-white/80 backdrop-blur-sm border border-slate-200/60 rounded-2xl overflow-hidden">
-                <div className="overflow-x-auto">
+                {/* Desktop Table */}
+                <div className="overflow-x-auto hidden md:block">
                     <table className="w-full text-left">
                         <thead>
                             <tr className="bg-slate-50/80 text-slate-500 text-xs uppercase tracking-wider border-b border-slate-200">
@@ -113,6 +114,59 @@ export default function SupplierIndex({ suppliers, filters }) {
                         </tbody>
                     </table>
                 </div>
+
+                {/* Mobile Cards */}
+                <div className="grid grid-cols-1 gap-4 md:hidden p-4 bg-slate-50/50">
+                    {suppliers.data?.length > 0 ? suppliers.data.map(supplier => (
+                        <div key={supplier.id} className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm flex flex-col gap-3">
+                            <div className="flex gap-3 items-center">
+                                <div className="w-10 h-10 bg-teal-50 rounded-full flex items-center justify-center shrink-0">
+                                    <Truck className="w-5 h-5 text-teal-500" />
+                                </div>
+                                <div>
+                                    <p className="font-bold text-slate-900">{supplier.name}</p>
+                                    {supplier.company && <p className="text-xs font-semibold text-slate-600 mt-0.5">{supplier.company}</p>}
+                                </div>
+                            </div>
+                            
+                            <div className="bg-slate-50 border border-slate-100 rounded-lg p-3 space-y-2 mt-1">
+                                <div className="flex justify-between items-center">
+                                    <span className="text-xs font-semibold text-slate-500">Telepon</span>
+                                    <span className="text-sm font-semibold text-slate-700">{supplier.phone || '-'}</span>
+                                </div>
+                                <div className="flex justify-between items-center">
+                                    <span className="text-xs font-semibold text-slate-500">Email</span>
+                                    <span className="text-sm font-semibold text-slate-700">{supplier.email || '-'}</span>
+                                </div>
+                                <div className="flex justify-between items-center">
+                                    <span className="text-xs font-semibold text-slate-500">Total Pembelian</span>
+                                    <Badge variant="info">{supplier.purchases_count || 0}</Badge>
+                                </div>
+                            </div>
+                            
+                            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+                                <button
+                                    onClick={() => openEdit(supplier)}
+                                    className="flex-1 py-2 text-center text-sm font-semibold text-slate-600 bg-white border border-slate-200 hover:bg-slate-50 rounded-lg transition-colors flex items-center justify-center gap-1.5"
+                                >
+                                    <Edit2 className="w-4 h-4" /> Edit
+                                </button>
+                                <button
+                                    onClick={() => setDeleteTarget(supplier.id)}
+                                    className="flex-1 py-2 text-center text-sm font-semibold text-rose-600 bg-white border border-rose-200 hover:bg-rose-50 rounded-lg transition-colors flex items-center justify-center gap-1.5"
+                                >
+                                    <Trash2 className="w-4 h-4" /> Hapus
+                                </button>
+                            </div>
+                        </div>
+                    )) : (
+                        <div className="text-center py-8 text-slate-400 bg-white rounded-xl border border-dashed border-slate-300">
+                            <Truck className="w-12 h-12 mx-auto mb-3 opacity-20" />
+                            <p className="text-sm font-medium">Belum ada supplier</p>
+                        </div>
+                    )}
+                </div>
+
                 {suppliers.links && <Pagination links={suppliers.links} />}
             </div>
 

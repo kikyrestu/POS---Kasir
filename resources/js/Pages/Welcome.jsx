@@ -36,7 +36,7 @@ export default function Welcome({ auth }) {
                         </div>
                         <h1 className="text-5xl md:text-6xl font-extrabold text-slate-900 tracking-tight leading-tight mb-6">
                             Kelola Bisnis Anda dengan{' '}
-                            <span className="bg-gradient-to-r from-blue-600 to-teal-500 bg-clip-text text-transparent">NEXAPOS</span>
+                            <span className="bg-gradient-to-r from-blue-600 to-teal-500 bg-clip-text text-transparent">BuildyPOS</span>
                         </h1>
                         <p className="text-lg text-slate-500 max-w-xl mx-auto mb-10 leading-relaxed">
                             Sistem kasir modern yang lengkap untuk mengelola penjualan, stok barang, pelanggan, dan laporan bisnis Anda secara real-time.
@@ -66,7 +66,7 @@ export default function Welcome({ auth }) {
 
                 {/* Footer */}
                 <footer className="py-6 text-center text-xs text-slate-400">
-                    &copy; {new Date().getFullYear()} NEXAPOS. All rights reserved.
+                    &copy; {new Date().getFullYear()} BuildyPOS. All rights reserved.
                 </footer>
             </div>
         </>

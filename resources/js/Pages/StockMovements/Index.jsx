@@ -67,8 +67,9 @@ export default function StockMovementIndex({ movements, warehouses, products, fi
                 </div>
             </div>
 
-            <div className="bg-white/80 backdrop-blur-sm border border-slate-200/60 rounded-2xl overflow-hidden">
-                <div className="overflow-x-auto">
+            <div className="bg-white/80 backdrop-blur-sm border border-slate-200/60 rounded-2xl overflow-hidden mt-6">
+                {/* Desktop Table */}
+                <div className="overflow-x-auto hidden md:block">
                     <table className="w-full text-left">
                         <thead>
                             <tr className="bg-slate-50/80 text-slate-500 text-xs uppercase tracking-wider border-b border-slate-200">
@@ -116,6 +117,58 @@ export default function StockMovementIndex({ movements, warehouses, products, fi
                         </tbody>
                     </table>
                 </div>
+
+                {/* Mobile Cards */}
+                <div className="grid grid-cols-1 gap-4 md:hidden p-4 bg-slate-50/50">
+                    {movements.data?.length > 0 ? movements.data.map((mov) => (
+                        <div key={mov.id} className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm flex flex-col gap-3 relative">
+                            <div className="flex justify-between items-start mb-1">
+                                <div>
+                                    <p className="font-semibold text-slate-800 text-xs">{new Date(mov.created_at).toLocaleDateString('id-ID', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>
+                                    <p className="text-[10px] text-slate-400">Ref: {mov.reference_type}</p>
+                                </div>
+                                <div>
+                                    {mov.type === 'in' ? (
+                                        <span className="inline-flex items-center gap-1 text-emerald-600 text-[10px] font-bold bg-emerald-50 px-2 py-1 rounded border border-emerald-100">
+                                            <ArrowDownLeft className="w-3 h-3" /> Masuk
+                                        </span>
+                                    ) : (
+                                        <span className="inline-flex items-center gap-1 text-rose-500 text-[10px] font-bold bg-rose-50 px-2 py-1 rounded border border-rose-100">
+                                            <ArrowUpRight className="w-3 h-3" /> Keluar
+                                        </span>
+                                    )}
+                                </div>
+                            </div>
+                            
+                            <div>
+                                <p className="font-bold text-slate-900 text-sm">{mov.product?.name}</p>
+                                <p className="text-xs text-slate-600">{mov.warehouse?.name}</p>
+                                {mov.description && <p className="text-[10px] text-slate-500 mt-1 italic">{mov.description}</p>}
+                            </div>
+
+                            <div className="grid grid-cols-3 gap-2 mt-2 pt-3 border-t border-slate-100 text-center">
+                                <div className="bg-slate-50 rounded-lg p-2">
+                                    <p className="text-[9px] font-bold text-slate-400 uppercase mb-0.5">Awal</p>
+                                    <p className="font-mono font-semibold text-slate-600">{mov.balance_before}</p>
+                                </div>
+                                <div className={`${mov.type === 'in' ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'} rounded-lg p-2`}>
+                                    <p className="text-[9px] font-bold uppercase mb-0.5 opacity-70">Mutasi</p>
+                                    <p className="font-mono font-bold">{mov.type === 'in' ? '+' : '-'}{mov.quantity}</p>
+                                </div>
+                                <div className="bg-blue-50 rounded-lg p-2">
+                                    <p className="text-[9px] font-bold text-blue-500 uppercase mb-0.5">Akhir</p>
+                                    <p className="font-mono font-bold text-blue-700">{mov.balance_after}</p>
+                                </div>
+                            </div>
+                        </div>
+                    )) : (
+                        <div className="text-center py-10 text-slate-400 bg-white rounded-xl border border-dashed border-slate-300">
+                            <ArrowRightLeft className="w-12 h-12 mx-auto text-slate-300 mb-3 opacity-50" />
+                            <p className="text-sm font-medium">Belum ada histori pergerakan stok.</p>
+                        </div>
+                    )}
+                </div>
+
                 {movements.links && <Pagination links={movements.links} />}
             </div>
         </AppLayout>

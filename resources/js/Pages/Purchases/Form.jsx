@@ -1,4 +1,4 @@
-import { Head, useForm, Link } from '@inertiajs/react';
+import { Head, useForm, Link, usePage } from '@inertiajs/react';
 import AppLayout from '@/Layouts/AppLayout';
 import { ArrowLeft, Save, Plus, Trash2, Search } from 'lucide-react';
 import { Input } from '@/Components/UI';
@@ -6,7 +6,8 @@ import { formatCurrency } from '@/Utils/format';
 import { useState, useRef } from 'react';
 
 export default function PurchaseForm({ suppliers, warehouses, categories }) {
-    const { data, setData, post, processing, errors } = useForm({
+    const { global_settings } = usePage().props;
+    const { data, setData, post, processing, errors, transform } = useForm({
         supplier_id: '',
         warehouse_id: warehouses[0]?.id || '',
         purchase_date: new Date().toISOString().split('T')[0],
@@ -66,11 +67,22 @@ export default function PurchaseForm({ suppliers, warehouses, categories }) {
         setData('items', data.items.filter((_, i) => i !== idx));
     };
 
+    const discountFormat = global_settings?.discount_format || 'amount';
+    const taxFormat = global_settings?.tax_format || 'amount';
+
     const subtotal = data.items.reduce((sum, i) => sum + (i.unit_price * i.quantity) - i.discount, 0);
-    const total = subtotal - (data.discount || 0) + (data.tax || 0);
+    const discountAmount = discountFormat === 'percent' ? subtotal * ((data.discount || 0) / 100) : (data.discount || 0);
+    const taxableAmount = subtotal - discountAmount;
+    const taxAmount = taxFormat === 'percent' ? taxableAmount * ((data.tax || 0) / 100) : (data.tax || 0);
+    const total = taxableAmount + taxAmount;
 
     const handleSubmit = (e) => {
         e.preventDefault();
+        transform((data) => ({
+            ...data,
+            discount: discountAmount,
+            tax: taxAmount,
+        }));
         post(route('purchases.store'));
     };
 
@@ -195,8 +207,8 @@ export default function PurchaseForm({ suppliers, warehouses, categories }) {
                         <div className="grid grid-cols-1 gap-4">
                             <Input label="Jumlah Bayar" type="number" value={data.paid} onChange={e => setData('paid', parseFloat(e.target.value) || 0)} min="0" />
                         </div>
-                        <Input label="Diskon (Rp)" type="number" value={data.discount} onChange={e => setData('discount', parseFloat(e.target.value) || 0)} min="0" />
-                        <Input label="Pajak (Rp)" type="number" value={data.tax} onChange={e => setData('tax', parseFloat(e.target.value) || 0)} min="0" />
+                        <Input label={`Diskon ${discountFormat === 'percent' ? '(%)' : '(Rp)'}`} type="number" value={data.discount} onChange={e => setData('discount', parseFloat(e.target.value) || 0)} min="0" />
+                        <Input label={`Pajak ${taxFormat === 'percent' ? '(%)' : '(Rp)'}`} type="number" value={data.tax} onChange={e => setData('tax', parseFloat(e.target.value) || 0)} min="0" />
                         <div>
                             <label className="block text-sm font-semibold text-slate-700 mb-1.5">Catatan</label>
                             <textarea value={data.notes} onChange={e => setData('notes', e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30 resize-none h-20" placeholder="Catatan (opsional)" />
@@ -207,8 +219,8 @@ export default function PurchaseForm({ suppliers, warehouses, categories }) {
                         <div className="space-y-2 text-sm">
                             <h3 className="font-bold text-slate-900 mb-4">Ringkasan</h3>
                             <div className="flex justify-between"><span className="text-slate-500">Subtotal</span><span className="font-mono">{formatCurrency(subtotal)}</span></div>
-                            {data.discount > 0 && <div className="flex justify-between text-rose-500"><span>Diskon</span><span className="font-mono">-{formatCurrency(data.discount)}</span></div>}
-                            {data.tax > 0 && <div className="flex justify-between"><span className="text-slate-500">Pajak</span><span className="font-mono">+{formatCurrency(data.tax)}</span></div>}
+                            {discountAmount > 0 && <div className="flex justify-between text-rose-500"><span>Diskon</span><span className="font-mono">-{formatCurrency(discountAmount)}</span></div>}
+                            {taxAmount > 0 && <div className="flex justify-between"><span className="text-slate-500">Pajak</span><span className="font-mono">+{formatCurrency(taxAmount)}</span></div>}
                             <div className="flex justify-between text-xl font-bold pt-3 border-t border-slate-200">
                                 <span>Total</span><span className="text-blue-600 font-mono">{formatCurrency(total)}</span>
                             </div>

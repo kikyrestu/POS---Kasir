@@ -1,6 +1,6 @@
 import { Head, useForm, router } from '@inertiajs/react';
 import AppLayout from '@/Layouts/AppLayout';
-import { ArrowLeft, Plus, Trash2, Search } from 'lucide-react';
+import { ArrowLeft, Plus, Trash2, Search, Package } from 'lucide-react';
 import { formatCurrency } from '@/Utils/format';
 import { Button, Input, Select } from '@/Components/UI';
 import { useState } from 'react';
@@ -19,7 +19,7 @@ export default function StockTransferCreate({ warehouses, products }) {
     const filteredProducts = (products || []).filter(p =>
         p.name.toLowerCase().includes(productSearch.toLowerCase()) ||
         (p.code && p.code.toLowerCase().includes(productSearch.toLowerCase()))
-    ).slice(0, 10);
+    ).slice(0, 50);
 
     const addItem = (product) => {
         if (items.find(i => i.product_id === product.id)) return;
@@ -94,8 +94,8 @@ export default function StockTransferCreate({ warehouses, products }) {
                                 <input type="text" value={productSearch} onChange={e => setProductSearch(e.target.value)} placeholder="Cari produk..."
                                     className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30" />
                             </div>
-                            {productSearch && filteredProducts.length > 0 && (
-                                <div className="mt-2 border border-slate-200 rounded-xl overflow-hidden">
+                            {filteredProducts.length > 0 && (
+                                <div className="mt-2 border border-slate-200 rounded-xl overflow-hidden max-h-64 overflow-y-auto scrollbar-thin scrollbar-thumb-slate-200">
                                     {filteredProducts.map(product => (
                                         <div key={product.id} onClick={() => addItem(product)}
                                             className="flex items-center justify-between px-4 py-3 hover:bg-blue-50 cursor-pointer border-b border-slate-100 last:border-0 text-sm">
@@ -111,9 +111,15 @@ export default function StockTransferCreate({ warehouses, products }) {
                         </div>
 
                         {/* Items Table */}
-                        {items.length > 0 && (
-                            <div className="bg-white/80 backdrop-blur-sm border border-slate-200/60 rounded-2xl p-6">
-                                <h3 className="font-bold text-slate-900 mb-4">Item Transfer</h3>
+                        <div className="bg-white/80 backdrop-blur-sm border border-slate-200/60 rounded-2xl p-6">
+                            <h3 className="font-bold text-slate-900 mb-4">Item Transfer</h3>
+                            {items.length === 0 ? (
+                                <div className="flex flex-col items-center justify-center py-8 text-slate-400">
+                                    <Package className="w-12 h-12 mb-3 opacity-30" />
+                                    <p className="text-sm font-medium">Belum ada produk dipilih</p>
+                                    <p className="text-xs mt-1">Silakan cari dan klik produk di samping</p>
+                                </div>
+                            ) : (
                                 <table className="w-full text-left text-sm">
                                     <thead>
                                         <tr className="text-slate-500 text-xs uppercase border-b border-slate-200">
@@ -139,8 +145,8 @@ export default function StockTransferCreate({ warehouses, products }) {
                                         ))}
                                     </tbody>
                                 </table>
-                            </div>
-                        )}
+                            )}
+                        </div>
                     </div>
 
                     {/* Right sidebar */}

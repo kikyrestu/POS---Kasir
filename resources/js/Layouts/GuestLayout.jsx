@@ -14,7 +14,7 @@ export default function GuestLayout({ children }) {
                 {children}
             </div>
 
-            <p className="mt-6 text-xs text-slate-400">&copy; {new Date().getFullYear()} NEXAPOS. All rights reserved.</p>
+            <p className="mt-6 text-xs text-slate-400">&copy; {new Date().getFullYear()} BuildyPOS. All rights reserved.</p>
         </div>
     );
 }

@@ -25,7 +25,8 @@ export default function Receivables({ receivables }) {
             </div>
 
             <div className="bg-white/80 backdrop-blur-sm border border-slate-200/60 rounded-2xl overflow-hidden mt-6">
-                <div className="overflow-x-auto">
+                {/* Desktop Table */}
+                <div className="overflow-x-auto hidden md:block">
                     <table className="w-full text-left">
                         <thead>
                             <tr className="bg-slate-50/80 text-slate-500 text-xs uppercase tracking-wider border-b border-slate-200">
@@ -77,6 +78,56 @@ export default function Receivables({ receivables }) {
                             )}
                         </tbody>
                     </table>
+                </div>
+
+                {/* Mobile Cards */}
+                <div className="grid grid-cols-1 gap-4 md:hidden p-4 bg-slate-50/50">
+                    {receivables?.length > 0 ? receivables.map((recv) => (
+                        <div key={recv.id} className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm flex flex-col gap-3">
+                            <div className="flex items-center gap-3 border-b border-slate-100 pb-3">
+                                <div className="w-10 h-10 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-bold text-lg shrink-0">
+                                    {recv.name.charAt(0)}
+                                </div>
+                                <div>
+                                    <p className="font-bold text-slate-900">{recv.name}</p>
+                                    <p className="text-xs text-slate-500">{recv.phone || 'Tidak ada no. telp'}</p>
+                                </div>
+                            </div>
+                            
+                            <div>
+                                <p className="text-[10px] font-semibold text-slate-500 uppercase mb-1">Total Piutang</p>
+                                <p className="font-mono font-bold text-slate-900 text-xl">{formatCurrency(recv.total_debt)}</p>
+                                
+                                {/* Bar indicator */}
+                                <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden flex mt-2 mb-3">
+                                    <div style={{ width: `${(recv.debt_under_30 / recv.total_debt) * 100}%` }} className="bg-emerald-400 h-full"></div>
+                                    <div style={{ width: `${(recv.debt_30_to_60 / recv.total_debt) * 100}%` }} className="bg-orange-400 h-full"></div>
+                                    <div style={{ width: `${(recv.debt_over_60 / recv.total_debt) * 100}%` }} className="bg-rose-500 h-full"></div>
+                                </div>
+                            </div>
+                            
+                            <div className="grid grid-cols-3 gap-2 pt-2 border-t border-slate-100 text-center">
+                                <div className="bg-emerald-50 rounded-lg py-2">
+                                    <p className="text-[10px] font-bold text-emerald-600 uppercase mb-0.5">&lt; 30 Hr</p>
+                                    <p className="font-mono font-semibold text-emerald-700 text-xs">{recv.debt_under_30 > 0 ? formatCurrency(recv.debt_under_30) : '-'}</p>
+                                </div>
+                                <div className="bg-orange-50 rounded-lg py-2">
+                                    <p className="text-[10px] font-bold text-orange-500 uppercase mb-0.5">30-60 Hr</p>
+                                    <p className="font-mono font-semibold text-orange-600 text-xs">{recv.debt_30_to_60 > 0 ? formatCurrency(recv.debt_30_to_60) : '-'}</p>
+                                </div>
+                                <div className="bg-rose-50 rounded-lg py-2 relative overflow-hidden">
+                                    {recv.debt_over_60 > 0 && <AlertTriangle className="absolute -right-2 -top-2 w-8 h-8 text-rose-500 opacity-10" />}
+                                    <p className="text-[10px] font-bold text-rose-600 uppercase mb-0.5">&gt; 60 Hr</p>
+                                    <p className="font-mono font-bold text-rose-700 text-xs">{recv.debt_over_60 > 0 ? formatCurrency(recv.debt_over_60) : '-'}</p>
+                                </div>
+                            </div>
+                        </div>
+                    )) : (
+                        <div className="text-center py-10 text-slate-400 bg-white rounded-xl border border-dashed border-slate-300">
+                            <Users className="w-12 h-12 mx-auto text-slate-300 mb-3 opacity-50" />
+                            <p className="text-sm font-medium">Tidak ada pelanggan yang menunggak.</p>
+                        </div>
+                    )}
                 </div>
             </div>
         </AppLayout>

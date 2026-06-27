@@ -2,7 +2,7 @@ import { forwardRef } from 'react';
 import { formatCurrency } from '@/Utils/format';
 
 const Receipt = forwardRef(({ sale, store = {}, cashier = '' }, ref) => {
-    const storeName = store.store_name || 'NEXAPOS';
+    const storeName = store.store_name || 'BuildyPOS';
     const storeAddress = store.store_address || '';
     const storePhone = store.store_phone || '';
     const receiptHeader = store.receipt_header || '';

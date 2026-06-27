@@ -53,7 +53,7 @@ export default function SalesByInvoice({ sales, totals, filters, cashiers }) {
 
             {/* Filters */}
             <div className="bg-white/80 backdrop-blur-sm border border-slate-200/60 rounded-2xl p-5">
-                <div className="flex flex-col md:flex-row gap-3 items-end">
+                <div className="flex flex-col md:flex-row gap-3 items-stretch md:items-end">
                     <div className="flex-1">
                         <label className="block text-xs font-semibold text-slate-500 mb-1.5">Dari Tanggal</label>
                         <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30" />
@@ -69,16 +69,17 @@ export default function SalesByInvoice({ sales, totals, filters, cashiers }) {
                             {cashiers?.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                         </select>
                     </div>
-                    <div className="flex gap-2">
-                        <button onClick={applyFilter} className="px-5 py-2.5 bg-blue-600 text-white text-sm font-semibold rounded-xl hover:bg-blue-700 transition-colors">Filter</button>
-                        <button onClick={resetFilter} className="px-5 py-2.5 bg-slate-100 text-slate-600 text-sm font-semibold rounded-xl hover:bg-slate-200 transition-colors">Reset</button>
+                    <div className="flex gap-2 mt-2 md:mt-0">
+                        <button onClick={applyFilter} className="flex-1 md:flex-none px-5 py-2.5 bg-blue-600 text-white text-sm font-semibold rounded-xl hover:bg-blue-700 transition-colors">Filter</button>
+                        <button onClick={resetFilter} className="flex-1 md:flex-none px-5 py-2.5 bg-slate-100 text-slate-600 text-sm font-semibold rounded-xl hover:bg-slate-200 transition-colors">Reset</button>
                     </div>
                 </div>
             </div>
 
             {/* Table */}
-            <div className="bg-white/80 backdrop-blur-sm border border-slate-200/60 rounded-2xl overflow-hidden">
-                <div className="overflow-x-auto">
+            <div className="bg-white/80 backdrop-blur-sm border border-slate-200/60 rounded-2xl overflow-hidden mt-6">
+                {/* Desktop Table */}
+                <div className="overflow-x-auto hidden md:block">
                     <table className="w-full text-left">
                         <thead>
                             <tr className="bg-slate-50/80 text-slate-500 text-xs uppercase tracking-wider border-b border-slate-200">
@@ -108,6 +109,48 @@ export default function SalesByInvoice({ sales, totals, filters, cashiers }) {
                         </tbody>
                     </table>
                 </div>
+
+                {/* Mobile Cards */}
+                <div className="grid grid-cols-1 gap-4 md:hidden p-4 bg-slate-50/50">
+                    {sales.data?.length > 0 ? sales.data.map(sale => (
+                        <div key={sale.id} className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm flex flex-col gap-3">
+                            <div className="flex justify-between items-start border-b border-slate-100 pb-2">
+                                <div>
+                                    <p className="font-mono font-bold text-slate-900">{sale.invoice_number}</p>
+                                    <p className="text-xs text-slate-500 mt-0.5">{sale.sale_date}</p>
+                                </div>
+                                <div className="text-right">
+                                    <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider block mb-0.5">Total</span>
+                                    <p className="font-mono font-bold text-blue-600 text-lg">{formatCurrency(sale.total)}</p>
+                                </div>
+                            </div>
+                            <div className="grid grid-cols-2 gap-3 mt-1">
+                                <div>
+                                    <p className="text-[10px] font-semibold text-slate-500 uppercase">Pelanggan</p>
+                                    <p className="text-sm font-semibold text-slate-800">{sale.customer?.name || 'Umum'}</p>
+                                </div>
+                                <div className="text-right">
+                                    <p className="text-[10px] font-semibold text-slate-500 uppercase">Kasir</p>
+                                    <p className="text-sm font-medium text-slate-700">{sale.user?.name}</p>
+                                </div>
+                                <div>
+                                    <p className="text-[10px] font-semibold text-rose-400 uppercase">Diskon</p>
+                                    <p className="font-mono font-semibold text-rose-500">{formatCurrency(sale.discount_amount)}</p>
+                                </div>
+                                <div className="text-right">
+                                    <p className="text-[10px] font-semibold text-emerald-600 uppercase">Profit</p>
+                                    <p className="font-mono font-bold text-emerald-600">{formatCurrency(sale.profit)}</p>
+                                </div>
+                            </div>
+                        </div>
+                    )) : (
+                        <div className="text-center py-8 text-slate-400 bg-white rounded-xl border border-dashed border-slate-300">
+                            <FileText className="w-12 h-12 mx-auto mb-3 opacity-20" />
+                            <p className="text-sm font-medium">Tidak ada data</p>
+                        </div>
+                    )}
+                </div>
+
                 {sales.links && <Pagination links={sales.links} />}
             </div>
         </AppLayout>

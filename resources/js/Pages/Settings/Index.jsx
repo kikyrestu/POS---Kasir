@@ -1,11 +1,12 @@
 import { Head, useForm } from '@inertiajs/react';
 import AppLayout from '@/Layouts/AppLayout';
-import { Settings, Store, Receipt, Printer, Bell } from 'lucide-react';
+import { Settings, Store, Receipt, Printer, Bell, CreditCard } from 'lucide-react';
 import { Button, Input } from '@/Components/UI';
 import { useState } from 'react';
 
 const TABS = [
     { key: 'toko', label: 'Toko', icon: Store },
+    { key: 'transaksi', label: 'Transaksi', icon: CreditCard },
     { key: 'struk', label: 'Struk', icon: Receipt },
     { key: 'printer', label: 'Printer', icon: Printer },
     { key: 'notifikasi', label: 'Notifikasi', icon: Bell },
@@ -18,6 +19,10 @@ const SETTINGS_FIELDS = {
         { key: 'store_phone', label: 'Telepon', type: 'text' },
         { key: 'store_email', label: 'Email', type: 'email' },
         { key: 'store_tax_number', label: 'NPWP', type: 'text' },
+    ],
+    transaksi: [
+        { key: 'discount_format', label: 'Format Diskon', type: 'select', options: [{ value: 'amount', label: 'Nominal (Rp)' }, { value: 'percent', label: 'Persentase (%)' }] },
+        { key: 'tax_format', label: 'Format Pajak', type: 'select', options: [{ value: 'amount', label: 'Nominal (Rp)' }, { value: 'percent', label: 'Persentase (%)' }] },
     ],
     struk: [
         { key: 'receipt_header', label: 'Header Struk', type: 'textarea' },
@@ -117,7 +122,11 @@ export default function SettingsIndex({ settings }) {
                                                 <label className="block text-sm font-semibold text-slate-700 mb-1.5">{field.label}</label>
                                                 <select value={getFieldValue(field.key)} onChange={e => updateField(field.key, e.target.value)}
                                                     className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30">
-                                                    {field.options.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+                                                    {field.options.map(opt => (
+                                                        <option key={typeof opt === 'string' ? opt : opt.value} value={typeof opt === 'string' ? opt : opt.value}>
+                                                            {typeof opt === 'string' ? opt : opt.label}
+                                                        </option>
+                                                    ))}
                                                 </select>
                                             </div>
                                         ) : (

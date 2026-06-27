@@ -19,26 +19,28 @@ export default function SalesShow({ sale, store = {} }) {
         <AppLayout title="Detail Penjualan">
             <Head title={`Detail ${sale.invoice_number}`} />
 
-            <div className="flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                    <Link href={route('sales.index')} className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-xl transition-colors">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div className="flex items-start md:items-center gap-4">
+                    <Link href={route('sales.index')} className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-xl transition-colors shrink-0">
                         <ArrowLeft className="w-5 h-5" />
                     </Link>
                     <div>
-                        <h2 className="text-2xl font-bold text-slate-900">{sale.invoice_number}</h2>
-                        <p className="text-sm text-slate-500 mt-0.5">{sale.sale_date}</p>
+                        <h2 className="text-xl md:text-2xl font-bold text-slate-900 break-all leading-tight">{sale.invoice_number}</h2>
+                        <p className="text-xs md:text-sm text-slate-500 mt-0.5">
+                            {new Date(sale.sale_date).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' })}
+                        </p>
                     </div>
                 </div>
-                <div className="flex gap-2">
+                <div className="flex gap-2 w-full md:w-auto mt-2 md:mt-0">
                     <button
                         onClick={() => setShowReceipt(true)}
-                        className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl text-sm font-semibold transition-colors"
+                        className="flex-1 md:flex-none justify-center inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl text-sm font-semibold transition-colors"
                     >
                         <Receipt className="w-4 h-4" /> Cetak Struk
                     </button>
                     <button
                         onClick={() => window.print()}
-                        className="inline-flex items-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 py-2 rounded-xl text-sm font-semibold transition-colors"
+                        className="flex-1 md:flex-none justify-center inline-flex items-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 py-2 rounded-xl text-sm font-semibold transition-colors"
                     >
                         <Printer className="w-4 h-4" /> Cetak A4
                     </button>
@@ -51,7 +53,7 @@ export default function SalesShow({ sale, store = {} }) {
                     <h3 className="font-bold text-slate-900 flex items-center gap-2"><Receipt className="w-4 h-4 text-blue-600" /> Info Transaksi</h3>
                     <div className="space-y-3 text-sm">
                         <div className="flex justify-between"><span className="text-slate-500">Invoice</span><span className="font-mono font-semibold">{sale.invoice_number}</span></div>
-                        <div className="flex justify-between"><span className="text-slate-500">Tanggal</span><span className="font-medium">{sale.sale_date}</span></div>
+                        <div className="flex justify-between"><span className="text-slate-500">Tanggal</span><span className="font-medium text-right">{new Date(sale.sale_date).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' })}</span></div>
                         <div className="flex justify-between"><span className="text-slate-500">Pelanggan</span><span className="font-medium">{sale.customer?.name || 'Umum'}</span></div>
                         <div className="flex justify-between"><span className="text-slate-500">Kasir</span><span className="font-medium">{sale.user?.name}</span></div>
                         <div className="flex justify-between"><span className="text-slate-500">Gudang</span><span className="font-medium">{sale.warehouse?.name}</span></div>
@@ -70,28 +72,30 @@ export default function SalesShow({ sale, store = {} }) {
                         <div className="p-4 border-b border-slate-100 bg-slate-50/50">
                             <h3 className="font-bold text-slate-900">Detail Item</h3>
                         </div>
-                        <table className="w-full text-left text-sm">
-                            <thead>
-                                <tr className="text-slate-500 text-xs uppercase tracking-wider border-b border-slate-100">
-                                    <th className="px-6 py-3 font-bold">Produk</th>
-                                    <th className="px-6 py-3 font-bold text-right">Harga</th>
-                                    <th className="px-6 py-3 font-bold text-right">Qty</th>
-                                    <th className="px-6 py-3 font-bold text-right">Diskon</th>
-                                    <th className="px-6 py-3 font-bold text-right">Subtotal</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-slate-50">
-                                {sale.details?.map((detail, idx) => (
-                                    <tr key={idx} className="hover:bg-slate-50/50">
-                                        <td className="px-6 py-3 font-medium text-slate-800">{detail.product?.name}</td>
-                                        <td className="px-6 py-3 text-right font-mono text-slate-600">{formatCurrency(detail.unit_price)}</td>
-                                        <td className="px-6 py-3 text-right font-mono text-slate-600">{detail.quantity}</td>
-                                        <td className="px-6 py-3 text-right font-mono text-slate-600">{formatCurrency(detail.discount)}</td>
-                                        <td className="px-6 py-3 text-right font-mono font-semibold text-slate-800">{formatCurrency(detail.subtotal)}</td>
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-left text-sm whitespace-nowrap">
+                                <thead>
+                                    <tr className="text-slate-500 text-xs uppercase tracking-wider border-b border-slate-100">
+                                        <th className="px-6 py-3 font-bold">Produk</th>
+                                        <th className="px-6 py-3 font-bold text-right">Harga</th>
+                                        <th className="px-6 py-3 font-bold text-right">Qty</th>
+                                        <th className="px-6 py-3 font-bold text-right">Diskon</th>
+                                        <th className="px-6 py-3 font-bold text-right">Subtotal</th>
                                     </tr>
-                                ))}
-                            </tbody>
-                        </table>
+                                </thead>
+                                <tbody className="divide-y divide-slate-50">
+                                    {sale.details?.map((detail, idx) => (
+                                        <tr key={idx} className="hover:bg-slate-50/50">
+                                            <td className="px-6 py-3 font-medium text-slate-800">{detail.product?.name}</td>
+                                            <td className="px-6 py-3 text-right font-mono text-slate-600">{formatCurrency(detail.unit_price)}</td>
+                                            <td className="px-6 py-3 text-right font-mono text-slate-600">{detail.quantity}</td>
+                                            <td className="px-6 py-3 text-right font-mono text-slate-600">{formatCurrency(detail.discount)}</td>
+                                            <td className="px-6 py-3 text-right font-mono font-semibold text-slate-800">{formatCurrency(detail.subtotal)}</td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
                     </Card>
 
                     <Card className="p-6">

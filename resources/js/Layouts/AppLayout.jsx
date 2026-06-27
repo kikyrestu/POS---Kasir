@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link, usePage } from '@inertiajs/react';
+import { Toaster, toast } from 'sonner';
 import {
     LayoutDashboard,
     ShoppingBag,
@@ -29,54 +30,54 @@ import {
 } from 'lucide-react';
 
 const NAV_ITEMS = [
-    { icon: LayoutDashboard, label: 'Dashboard', route: 'dashboard' },
-    { icon: ShoppingBag, label: 'POS Kasir', route: 'pos.index' },
+    { icon: LayoutDashboard, label: 'Dashboard', route: 'dashboard', permission: 'dashboard' },
+    { icon: ShoppingBag, label: 'POS Kasir', route: 'pos.index', permission: 'pos' },
     {
         icon: Package, label: 'Produk', children: [
-            { label: 'Daftar Produk', route: 'products.index' },
-            { label: 'Kategori', route: 'categories.index' },
-            { label: 'Cetak Barcode', route: 'barcodes.index' },
+            { label: 'Daftar Produk', route: 'products.index', permission: 'products.view' },
+            { label: 'Kategori', route: 'categories.index', permission: 'categories.manage' },
+            { label: 'Cetak Barcode', route: 'barcodes.index', permission: 'barcodes.print' },
         ]
     },
     {
         icon: Warehouse, label: 'Gudang', children: [
-            { label: 'Daftar Gudang', route: 'warehouses.index' },
-            { label: 'Transfer Barang', route: 'stock-transfers.index' },
-            { label: 'Penyesuaian Stok', route: 'stock-opnames.index' },
-            { label: 'Riwayat Mutasi', route: 'stock-movements.index' },
+            { label: 'Daftar Gudang', route: 'warehouses.index', permission: 'warehouses.manage' },
+            { label: 'Transfer Barang', route: 'stock-transfers.index', permission: 'stock-transfers.manage' },
+            { label: 'Penyesuaian Stok', route: 'stock-opnames.index', permission: 'warehouses.manage' },
+            { label: 'Riwayat Mutasi', route: 'stock-movements.index', permission: 'warehouses.manage' },
         ]
     },
-    { icon: TruckIcon, label: 'Supplier', route: 'suppliers.index' },
+    { icon: TruckIcon, label: 'Supplier', route: 'suppliers.index', permission: 'suppliers.manage' },
     {
         icon: CreditCard, label: 'Penjualan', children: [
-            { label: 'Daftar Penjualan', route: 'sales.index' },
-            { label: 'Penjualan Tempo', route: 'sales-tempo.index' },
-            { label: 'Retur Penjualan', route: 'sale-returns.index' },
+            { label: 'Daftar Penjualan', route: 'sales.index', permission: 'sales.view' },
+            { label: 'Penjualan Tempo', route: 'sales-tempo.index', permission: 'sales-tempo.view' },
+            { label: 'Retur Penjualan', route: 'sale-returns.index', permission: 'sale-returns.manage' },
         ]
     },
     {
         icon: ShoppingBag, label: 'Pembelian', children: [
-            { label: 'Daftar Pembelian', route: 'purchases.index' },
-            { label: 'Retur Pembelian', route: 'purchase-returns.index' },
+            { label: 'Daftar Pembelian', route: 'purchases.index', permission: 'purchases.view' },
+            { label: 'Retur Pembelian', route: 'purchase-returns.index', permission: 'purchase-returns.manage' },
         ]
     },
-    { icon: Wallet, label: 'Biaya & Kasbon', route: 'expenses.index' },
-    { icon: Users, label: 'Pelanggan', route: 'customers.index' },
+    { icon: Wallet, label: 'Biaya & Kasbon', route: 'expenses.index', permission: 'sales.view' },
+    { icon: Users, label: 'Pelanggan', route: 'customers.index', permission: 'customers.manage' },
     {
         icon: BarChart3, label: 'Laporan', children: [
-            { label: 'Penjualan Per Invoice', route: 'reports.sales-by-invoice' },
-            { label: 'Penjualan Per Item', route: 'reports.sales-by-item' },
-            { label: 'Pembelian Per Invoice', route: 'reports.purchases-by-invoice' },
-            { label: 'Laba / Rugi (P&L)', route: 'reports.profit-loss' },
-            { label: 'Aging Piutang', route: 'reports.receivables' },
+            { label: 'Penjualan Per Invoice', route: 'reports.sales-by-invoice', permission: 'reports.view' },
+            { label: 'Penjualan Per Item', route: 'reports.sales-by-item', permission: 'reports.view' },
+            { label: 'Pembelian Per Invoice', route: 'reports.purchases-by-invoice', permission: 'reports.view' },
+            { label: 'Laba / Rugi (P&L)', route: 'reports.profit-loss', permission: 'reports.view' },
+            { label: 'Aging Piutang', route: 'reports.receivables', permission: 'reports.view' },
         ]
     },
     {
         icon: Settings, label: 'Setting', children: [
-            { label: 'Pengaturan', route: 'settings.index' },
-            { label: 'User', route: 'users.index' },
-            { label: 'Role & Permission', route: 'roles.index' },
-            { label: 'Log Aktivitas Sistem', route: 'activity-logs.index' },
+            { label: 'Pengaturan', route: 'settings.index', permission: 'settings.manage' },
+            { label: 'User', route: 'users.index', permission: 'users.manage' },
+            { label: 'Role & Permission', route: 'roles.index', permission: 'roles.manage' },
+            { label: 'Log Aktivitas Sistem', route: 'activity-logs.index', permission: 'settings.manage' },
         ]
     },
 ];
@@ -86,13 +87,40 @@ export default function AppLayout({ children, title }) {
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const [expandedMenu, setExpandedMenu] = useState(null);
 
+    const hasPermission = (permission) => {
+        if (!permission) return true;
+        if (auth.user?.role?.name === 'admin') return true;
+        return auth.user?.permissions?.includes(permission);
+    };
+
+    const filteredNavItems = NAV_ITEMS.filter(item => {
+        if (item.children) {
+            const visibleChildren = item.children.filter(child => hasPermission(child.permission));
+            return visibleChildren.length > 0;
+        }
+        return hasPermission(item.permission);
+    }).map(item => {
+        if (item.children) {
+            return {
+                ...item,
+                children: item.children.filter(child => hasPermission(child.permission))
+            };
+        }
+        return item;
+    });
+
     useEffect(() => {
         const isChildActive = (children) => children?.some(child => route().current(child.route));
-        const activeParent = NAV_ITEMS.find(item => item.children && isChildActive(item.children));
+        const activeParent = filteredNavItems.find(item => item.children && isChildActive(item.children));
         if (activeParent) {
             setExpandedMenu(activeParent.label);
         }
     }, [usePage().url]);
+
+    useEffect(() => {
+        if (flash?.success) toast.success(flash.success);
+        if (flash?.error) toast.error(flash.error);
+    }, [flash]);
 
     return (
         <div
@@ -106,27 +134,17 @@ export default function AppLayout({ children, title }) {
             }}
         >
 
-            {/* Mobile Overlay */}
-            {sidebarOpen && (
-                <div className="fixed inset-0 bg-black/20 backdrop-blur-sm z-30 lg:hidden" onClick={() => setSidebarOpen(false)} />
-            )}
-
-            {/* Sidebar */}
-            <aside className={`fixed lg:static inset-y-0 left-0 z-40 w-64 border-r border-slate-200/60 bg-white/80 backdrop-blur-xl flex flex-col justify-between py-6 transition-transform duration-300 shadow-[4px_0_24px_rgba(0,0,0,0.02)] ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}>
+            {/* Desktop Sidebar */}
+            <aside className="hidden lg:flex static inset-y-0 left-0 z-40 w-64 border-r border-slate-200/60 bg-white/80 backdrop-blur-xl flex-col justify-between py-6 shadow-[4px_0_24px_rgba(0,0,0,0.02)]">
                 <div>
                     {/* Logo */}
-                    <div className="px-6 mb-10 flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-teal-400 flex items-center justify-center shadow-[0_4px_15px_rgba(59,130,246,0.25)]">
-                            <Box className="text-white w-6 h-6" />
-                        </div>
-                        <span className="text-xl font-bold tracking-wide text-transparent bg-clip-text bg-gradient-to-r from-slate-900 to-slate-500">
-                            NEXA<span className="font-light">POS</span>
-                        </span>
+                    <div className="px-6 mb-10 flex items-center">
+                        <img src="/images/logo.png" alt="BuildyPOS Logo" className="h-8 w-auto object-contain" />
                     </div>
 
                     {/* Navigation */}
                     <nav className="space-y-1 px-3">
-                        {NAV_ITEMS.map((item) => (
+                        {filteredNavItems.map((item) => (
                             <div key={item.label}>
                                 {item.children ? (
                                     <div>
@@ -171,11 +189,11 @@ export default function AppLayout({ children, title }) {
             </aside>
 
             {/* Main Content */}
-            <main className="flex-1 flex flex-col h-screen overflow-y-auto z-10 custom-scrollbar">
+            <main className="flex-1 flex flex-col h-screen overflow-y-auto z-10 custom-scrollbar pb-20 lg:pb-0">
                 {/* Header */}
                 <header className="min-h-[72px] lg:min-h-[88px] py-3 lg:py-4 bg-white flex items-center justify-between px-4 lg:px-8 sticky top-0 z-20 shadow-[0_1px_3px_rgba(0,0,0,0.08),0_1px_2px_rgba(0,0,0,0.04)]">
                     <div className="flex items-center gap-4">
-                        <button onClick={() => setSidebarOpen(!sidebarOpen)} className="lg:hidden p-2 text-slate-500 hover:text-slate-900 rounded-xl hover:bg-slate-100/80 transition-colors">
+                        <button onClick={() => setSidebarOpen(!sidebarOpen)} className="hidden p-2 text-slate-500 hover:text-slate-900 rounded-xl hover:bg-slate-100/80 transition-colors">
                             {sidebarOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
                         </button>
                         <div>
@@ -236,23 +254,91 @@ export default function AppLayout({ children, title }) {
                     </div>
                 </header>
 
-                {/* Flash Messages */}
-                {flash?.success && (
-                    <div className="mx-4 lg:mx-8 mt-4 px-4 py-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 text-sm font-medium">
-                        {flash.success}
-                    </div>
-                )}
-                {flash?.error && (
-                    <div className="mx-4 lg:mx-8 mt-4 px-4 py-3 rounded-xl bg-red-50 border border-red-200 text-red-700 text-sm font-medium">
-                        {flash.error}
-                    </div>
-                )}
+                {/* Sonner Toaster rendered globally */}
+                <Toaster richColors position="top-right" />
 
                 {/* Page Content */}
                 <div className="p-4 lg:p-8 space-y-6 lg:space-y-8 flex-1">
                     {children}
                 </div>
             </main>
+
+            {/* Bottom Navigation (Mobile Only) */}
+            <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 flex items-center justify-around z-40 pb-safe shadow-[0_-4px_24px_rgba(0,0,0,0.04)] h-16 px-2">
+                {hasPermission('dashboard') && (
+                    <BottomNavItem icon={LayoutDashboard} label="Dashboard" href={route('dashboard')} isActive={route().current('dashboard')} />
+                )}
+                {hasPermission('pos') && (
+                    <BottomNavItem icon={ShoppingBag} label="POS" href={route('pos.index')} isActive={route().current('pos.index')} />
+                )}
+                {hasPermission('sales.view') && (
+                    <BottomNavItem icon={CreditCard} label="Penjualan" href={route('sales.index')} isActive={route().current('sales.*')} />
+                )}
+                <button 
+                    onClick={() => setSidebarOpen(!sidebarOpen)}
+                    className={`flex flex-col items-center justify-center w-16 h-full gap-1 transition-colors ${sidebarOpen ? 'text-blue-600' : 'text-slate-500 hover:text-blue-600'}`}
+                >
+                    {sidebarOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+                    <span className="text-[10px] font-semibold">{sidebarOpen ? 'Tutup' : 'Menu'}</span>
+                </button>
+            </div>
+
+            {/* Mobile Bottom Sheet Menu (App Grid) */}
+            <div className={`lg:hidden fixed inset-0 z-30 transition-all duration-300 ${sidebarOpen ? 'opacity-100 visible' : 'opacity-0 invisible'}`}>
+                {/* Backdrop */}
+                <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={() => setSidebarOpen(false)} />
+                
+                {/* Sheet */}
+                <div className={`absolute bottom-16 left-0 right-0 bg-white rounded-t-3xl shadow-[0_-8px_30px_rgba(0,0,0,0.1)] transition-transform duration-300 ease-out flex flex-col max-h-[85vh] ${sidebarOpen ? 'translate-y-0' : 'translate-y-full'}`}>
+                    <div className="flex justify-center pt-3 pb-2 shrink-0">
+                        <div className="w-12 h-1.5 bg-slate-200 rounded-full"></div>
+                    </div>
+                    
+                    <div className="overflow-y-auto custom-scrollbar p-5 pt-2 pb-8">
+                        <div className="mb-6 flex items-center justify-center">
+                            <img src="/images/logo.png" alt="BuildyPOS Logo" className="h-8 w-auto object-contain" />
+                        </div>
+
+                        <div className="flex flex-col gap-6">
+                            {/* Items without children */}
+                            <div className="grid grid-cols-4 gap-y-6 gap-x-2">
+                                {filteredNavItems.filter(item => !item.children).map(item => (
+                                    <Link key={item.route} href={route(item.route)} onClick={() => setSidebarOpen(false)} className="flex flex-col items-center gap-2 group">
+                                        <div className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-all ${route().current(item.route) ? 'bg-blue-500 shadow-lg shadow-blue-500/30' : 'bg-slate-50 border border-slate-100 group-hover:bg-blue-50 group-hover:border-blue-200'}`}>
+                                            <item.icon className={`w-6 h-6 ${route().current(item.route) ? 'text-white' : 'text-slate-500 group-hover:text-blue-600'}`} />
+                                        </div>
+                                        <span className={`text-[10px] text-center font-medium leading-tight px-1 ${route().current(item.route) ? 'text-blue-700 font-bold' : 'text-slate-600'}`}>
+                                            {item.label}
+                                        </span>
+                                    </Link>
+                                ))}
+                            </div>
+
+                            {/* Items with children */}
+                            {filteredNavItems.filter(item => item.children).map(item => (
+                                <div key={item.label} className="bg-slate-50/50 rounded-2xl p-4 border border-slate-100">
+                                    <div className="flex items-center gap-2 mb-4">
+                                        <item.icon className="w-4 h-4 text-slate-400" />
+                                        <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">{item.label}</p>
+                                    </div>
+                                    <div className="grid grid-cols-4 gap-y-5 gap-x-2">
+                                        {item.children.map(child => (
+                                            <Link key={child.route} href={route(child.route)} onClick={() => setSidebarOpen(false)} className="flex flex-col items-center gap-2 group">
+                                                <div className={`w-12 h-12 rounded-xl flex items-center justify-center transition-all ${route().current(child.route) ? 'bg-blue-500 shadow-md shadow-blue-500/30' : 'bg-white border border-slate-200 group-hover:bg-blue-50 group-hover:border-blue-200 shadow-sm'}`}>
+                                                    <item.icon className={`w-5 h-5 ${route().current(child.route) ? 'text-white' : 'text-slate-400 group-hover:text-blue-600'}`} />
+                                                </div>
+                                                <span className={`text-[10px] text-center font-medium leading-tight px-1 ${route().current(child.route) ? 'text-blue-700 font-bold' : 'text-slate-600'}`}>
+                                                    {child.label}
+                                                </span>
+                                            </Link>
+                                        ))}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            </div>
 
             {/* Custom Scrollbar */}
             <style dangerouslySetInnerHTML={{__html: `
@@ -278,6 +364,18 @@ function NavItem({ icon: Icon, label, href, isActive }) {
             )}
             <Icon className={`w-5 h-5 ${isActive ? 'text-blue-600' : 'text-slate-400 group-hover:text-slate-600 transition-colors'}`} />
             <span className="text-sm tracking-wide">{label}</span>
+        </Link>
+    );
+}
+
+function BottomNavItem({ icon: Icon, label, href, isActive }) {
+    return (
+        <Link
+            href={href}
+            className={`flex flex-col items-center justify-center w-16 h-full gap-1 transition-colors ${isActive ? 'text-blue-600' : 'text-slate-500 hover:text-blue-600'}`}
+        >
+            <Icon className={`w-5 h-5 ${isActive ? 'fill-blue-100/50' : ''}`} />
+            <span className="text-[10px] font-semibold tracking-wide">{label}</span>
         </Link>
     );
 }

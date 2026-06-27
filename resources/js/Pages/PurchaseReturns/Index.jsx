@@ -40,8 +40,9 @@ export default function PurchaseReturnIndex({ returns, filters }) {
                 </form>
             </div>
 
-            <div className="bg-white/80 backdrop-blur-sm border border-slate-200/60 rounded-2xl overflow-hidden">
-                <div className="overflow-x-auto">
+            <div className="bg-white/80 backdrop-blur-sm border border-slate-200/60 rounded-2xl overflow-hidden mt-6">
+                {/* Desktop Table */}
+                <div className="overflow-x-auto hidden md:block">
                     <table className="w-full text-left">
                         <thead>
                             <tr className="bg-slate-50/80 text-slate-500 text-xs uppercase tracking-wider border-b border-slate-200">
@@ -83,6 +84,57 @@ export default function PurchaseReturnIndex({ returns, filters }) {
                         </tbody>
                     </table>
                 </div>
+
+                {/* Mobile Cards */}
+                <div className="grid grid-cols-1 gap-4 md:hidden p-4 bg-slate-50/50">
+                    {returns.data?.length > 0 ? returns.data.map((ret) => (
+                        <div key={ret.id} className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm flex flex-col gap-3 relative">
+                            <div className="flex justify-between items-start">
+                                <div className="flex items-center gap-2">
+                                    <div className="w-8 h-8 rounded-lg bg-orange-100 text-orange-600 flex items-center justify-center shrink-0">
+                                        <RotateCcw className="w-4 h-4" />
+                                    </div>
+                                    <div>
+                                        <p className="font-mono font-bold text-slate-800 text-sm leading-tight">{ret.return_number}</p>
+                                        <p className="text-[10px] text-slate-500">{ret.return_date}</p>
+                                    </div>
+                                </div>
+                                <div className="text-right">
+                                    <p className="text-[10px] font-semibold text-slate-400 uppercase mb-0.5">Total Retur</p>
+                                    <p className="font-mono font-bold text-orange-600">{formatCurrency(ret.total)}</p>
+                                </div>
+                            </div>
+                            
+                            <div className="bg-slate-50 rounded-lg p-3 border border-slate-100 mt-1">
+                                <div className="flex justify-between items-center">
+                                    <span className="text-xs text-slate-500">Ref Pembelian:</span>
+                                    <span className="font-mono font-semibold text-slate-700 text-sm">{ret.purchase?.invoice_number}</span>
+                                </div>
+                            </div>
+
+                            <div className="flex items-center justify-between mt-1 pt-3 border-t border-slate-100">
+                                <div className="flex items-center gap-2">
+                                    <span className="text-[10px] text-slate-400">User:</span>
+                                    <span className="text-xs font-medium text-slate-700">{ret.user?.name}</span>
+                                </div>
+                                <div className="flex items-center gap-1">
+                                    <Link href={route('purchase-returns.show', ret.id)} className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors bg-slate-50">
+                                        <Eye className="w-4 h-4" />
+                                    </Link>
+                                    <button onClick={() => setDeleteTarget(ret.id)} className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors bg-slate-50">
+                                        <Trash2 className="w-4 h-4" />
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    )) : (
+                        <div className="text-center py-10 text-slate-400 bg-white rounded-xl border border-dashed border-slate-300">
+                            <RotateCcw className="w-12 h-12 mx-auto text-slate-300 mb-3 opacity-50" />
+                            <p className="text-sm font-medium">Belum ada retur pembelian.</p>
+                        </div>
+                    )}
+                </div>
+
                 {returns.links && <Pagination links={returns.links} />}
             </div>
 

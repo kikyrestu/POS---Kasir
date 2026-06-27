@@ -49,8 +49,9 @@ export default function PurchasesByInvoice({ purchases, totals, filters, supplie
             </div>
 
             {/* Table */}
-            <div className="bg-white/80 backdrop-blur-sm border border-slate-200/60 rounded-2xl overflow-hidden">
-                <div className="overflow-x-auto">
+            <div className="bg-white/80 backdrop-blur-sm border border-slate-200/60 rounded-2xl overflow-hidden mt-6">
+                {/* Desktop Table */}
+                <div className="overflow-x-auto hidden md:block">
                     <table className="w-full text-left">
                         <thead>
                             <tr className="bg-slate-50/80 text-slate-500 text-xs uppercase tracking-wider border-b border-slate-200">
@@ -80,6 +81,41 @@ export default function PurchasesByInvoice({ purchases, totals, filters, supplie
                         </tbody>
                     </table>
                 </div>
+
+                {/* Mobile Cards */}
+                <div className="grid grid-cols-1 gap-4 md:hidden p-4 bg-slate-50/50">
+                    {purchases?.data?.length > 0 ? purchases.data.map(purchase => (
+                        <div key={purchase.id} className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm flex flex-col gap-3">
+                            <div className="flex justify-between items-start border-b border-slate-100 pb-2">
+                                <div>
+                                    <p className="font-mono font-bold text-slate-900">{purchase.invoice_number}</p>
+                                    <p className="text-xs text-slate-500 mt-0.5">{purchase.purchase_date}</p>
+                                </div>
+                                <div className="text-right">
+                                    <span className={`inline-flex px-2 py-0.5 rounded text-[10px] font-bold border uppercase tracking-wider ${purchase.status === 'received' ? 'bg-emerald-50 text-emerald-600 border-emerald-200' : 'bg-amber-50 text-amber-600 border-amber-200'}`}>
+                                        {purchase.status === 'received' ? 'Diterima' : 'Pending'}
+                                    </span>
+                                </div>
+                            </div>
+                            
+                            <div className="flex justify-between items-end mt-1">
+                                <div>
+                                    <p className="text-[10px] font-semibold text-slate-500 uppercase">Supplier</p>
+                                    <p className="text-sm font-semibold text-slate-800 mt-0.5">{purchase.supplier?.name || '-'}</p>
+                                </div>
+                                <div className="text-right">
+                                    <p className="text-[10px] font-semibold text-slate-500 uppercase">Total Pembelian</p>
+                                    <p className="font-mono font-bold text-slate-800 text-lg">{formatCurrency(purchase.total)}</p>
+                                </div>
+                            </div>
+                        </div>
+                    )) : (
+                        <div className="text-center py-8 text-slate-400 bg-white rounded-xl border border-dashed border-slate-300">
+                            <p className="text-sm font-medium">Belum ada data pembelian</p>
+                        </div>
+                    )}
+                </div>
+
                 {purchases?.links && <Pagination links={purchases.links} />}
             </div>
         </AppLayout>

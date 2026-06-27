@@ -73,7 +73,8 @@ export default function CustomerIndex({ customers, filters }) {
             </div>
 
             <div className="bg-white/80 backdrop-blur-sm border border-slate-200/60 rounded-2xl overflow-hidden">
-                <div className="overflow-x-auto">
+                {/* Desktop Table */}
+                <div className="overflow-x-auto hidden md:block">
                     <table className="w-full text-left">
                         <thead>
                             <tr className="bg-slate-50/80 text-slate-500 text-xs uppercase tracking-wider border-b border-slate-200">
@@ -126,6 +127,66 @@ export default function CustomerIndex({ customers, filters }) {
                         </tbody>
                     </table>
                 </div>
+
+                {/* Mobile Cards */}
+                <div className="grid grid-cols-1 gap-4 md:hidden p-4 bg-slate-50/50">
+                    {customers.data?.length > 0 ? customers.data.map(customer => (
+                        <div key={customer.id} className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm flex flex-col gap-3">
+                            <div className="flex justify-between items-start">
+                                <div className="flex gap-3 items-center">
+                                    <div className="w-10 h-10 bg-blue-50 rounded-full flex items-center justify-center shrink-0">
+                                        <Users className="w-5 h-5 text-blue-500" />
+                                    </div>
+                                    <div>
+                                        <p className="font-bold text-slate-900">{customer.name}</p>
+                                        <Badge variant={customer.type === 'member' ? 'info' : customer.type === 'reseller' ? 'warning' : 'default'} className="mt-1">
+                                            {customer.type}
+                                        </Badge>
+                                    </div>
+                                </div>
+                                <Badge variant={customer.is_active ? 'success' : 'danger'}>{customer.is_active ? 'Aktif' : 'Nonaktif'}</Badge>
+                            </div>
+                            
+                            <div className="bg-slate-50 border border-slate-100 rounded-lg p-3 space-y-2 mt-1">
+                                <div className="flex justify-between items-center">
+                                    <span className="text-xs font-semibold text-slate-500">Telepon</span>
+                                    <span className="text-sm font-semibold text-slate-700">{customer.phone || '-'}</span>
+                                </div>
+                                <div className="flex justify-between items-center">
+                                    <span className="text-xs font-semibold text-slate-500">Email</span>
+                                    <span className="text-sm font-semibold text-slate-700">{customer.email || '-'}</span>
+                                </div>
+                                {customer.address && (
+                                    <div className="pt-2 border-t border-slate-200">
+                                        <span className="text-xs font-semibold text-slate-500 block mb-1">Alamat</span>
+                                        <span className="text-sm text-slate-600 line-clamp-2">{customer.address}</span>
+                                    </div>
+                                )}
+                            </div>
+                            
+                            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+                                <button
+                                    onClick={() => openEdit(customer)}
+                                    className="flex-1 py-2 text-center text-sm font-semibold text-slate-600 bg-white border border-slate-200 hover:bg-slate-50 rounded-lg transition-colors flex items-center justify-center gap-1.5"
+                                >
+                                    <Edit2 className="w-4 h-4" /> Edit
+                                </button>
+                                <button
+                                    onClick={() => setDeleteTarget(customer.id)}
+                                    className="flex-1 py-2 text-center text-sm font-semibold text-rose-600 bg-white border border-rose-200 hover:bg-rose-50 rounded-lg transition-colors flex items-center justify-center gap-1.5"
+                                >
+                                    <Trash2 className="w-4 h-4" /> Hapus
+                                </button>
+                            </div>
+                        </div>
+                    )) : (
+                        <div className="text-center py-8 text-slate-400 bg-white rounded-xl border border-dashed border-slate-300">
+                            <Users className="w-12 h-12 mx-auto mb-3 opacity-20" />
+                            <p className="text-sm font-medium">Belum ada pelanggan</p>
+                        </div>
+                    )}
+                </div>
+
                 {customers.links && <Pagination links={customers.links} />}
             </div>
 

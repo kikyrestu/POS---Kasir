@@ -1,11 +1,11 @@
 import { Head, useForm, router } from '@inertiajs/react';
 import AppLayout from '@/Layouts/AppLayout';
-import { ArrowLeft, Search, Plus, Trash2 } from 'lucide-react';
+import { ArrowLeft, Search, Plus, Trash2, Package } from 'lucide-react';
 import { formatCurrency } from '@/Utils/format';
-import { Button, Input } from '@/Components/UI';
+import { Button, Input, Select } from '@/Components/UI';
 import { useState } from 'react';
 
-export default function SaleReturnCreate({ sale }) {
+export default function SaleReturnCreate({ sale, sales }) {
     const existingReturns = sale?.returns || [];
     const [items, setItems] = useState([]);
 
@@ -15,6 +15,14 @@ export default function SaleReturnCreate({ sale }) {
         notes: '',
         items: [],
     });
+
+    const handleSaleChange = (e) => {
+        if (!e.target.value) {
+            router.get(route('sale-returns.create'));
+        } else {
+            router.get(route('sale-returns.create', { sale_id: e.target.value }));
+        }
+    };
 
     const addItem = (detail) => {
         const returned = (existingReturns || [])
@@ -75,26 +83,48 @@ export default function SaleReturnCreate({ sale }) {
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                     {/* Left - Sale Details */}
                     <div className="lg:col-span-2 space-y-6">
+                        {/* Pemilihan Invoice */}
+                        <div className="bg-white/80 backdrop-blur-sm border border-slate-200/60 rounded-2xl p-6">
+                            <h3 className="font-bold text-slate-900 mb-4">Pilih Penjualan</h3>
+                            <Select label="Invoice Penjualan *" value={sale?.id || ''} onChange={handleSaleChange}>
+                                <option value="">Pilih Invoice...</option>
+                                {sales?.map(s => (
+                                    <option key={s.id} value={s.id}>{s.invoice_number} - {s.customer?.name || 'Umum'}</option>
+                                ))}
+                            </Select>
+                        </div>
+
+                        {/* List Item Penjualan */}
                         <div className="bg-white/80 backdrop-blur-sm border border-slate-200/60 rounded-2xl p-6">
                             <h3 className="font-bold text-slate-900 mb-4">Item Penjualan</h3>
-                            <p className="text-xs text-slate-400 mb-3">Klik item untuk menambahkan ke retur</p>
-                            <div className="space-y-2">
-                                {sale?.details?.map(detail => {
-                                    const returned = (existingReturns || []).flatMap(r => r.details || []).filter(d => d.sale_detail_id === detail.id).reduce((sum, d) => sum + d.quantity, 0);
-                                    const available = detail.quantity - returned;
-                                    const added = items.find(i => i.sale_detail_id === detail.id);
-                                    return (
-                                        <div key={detail.id} onClick={() => !added && available > 0 && addItem(detail)}
-                                            className={`flex items-center justify-between p-3 rounded-xl border transition-all cursor-pointer ${added ? 'bg-blue-50 border-blue-200' : available <= 0 ? 'bg-slate-50 border-slate-100 opacity-50 cursor-not-allowed' : 'border-slate-200 hover:border-blue-300 hover:bg-blue-50/50'}`}>
-                                            <div>
-                                                <p className="font-semibold text-sm text-slate-800">{detail.product?.name}</p>
-                                                <p className="text-xs text-slate-400">Qty: {detail.quantity} | Diretur: {returned} | Sisa: {available}</p>
-                                            </div>
-                                            <p className="font-mono text-sm text-slate-700">{formatCurrency(detail.unit_price)}</p>
-                                        </div>
-                                    );
-                                })}
-                            </div>
+                            {!sale ? (
+                                <div className="flex flex-col items-center justify-center py-8 text-slate-400">
+                                    <Package className="w-12 h-12 mb-3 opacity-30" />
+                                    <p className="text-sm font-medium">Belum ada invoice dipilih</p>
+                                    <p className="text-xs mt-1">Silakan pilih invoice penjualan di atas</p>
+                                </div>
+                            ) : (
+                                <>
+                                    <p className="text-xs text-slate-400 mb-3">Klik item untuk menambahkan ke retur</p>
+                                    <div className="space-y-2">
+                                        {sale?.details?.map(detail => {
+                                            const returned = (existingReturns || []).flatMap(r => r.details || []).filter(d => d.sale_detail_id === detail.id).reduce((sum, d) => sum + d.quantity, 0);
+                                            const available = detail.quantity - returned;
+                                            const added = items.find(i => i.sale_detail_id === detail.id);
+                                            return (
+                                                <div key={detail.id} onClick={() => !added && available > 0 && addItem(detail)}
+                                                    className={`flex items-center justify-between p-3 rounded-xl border transition-all cursor-pointer ${added ? 'bg-blue-50 border-blue-200' : available <= 0 ? 'bg-slate-50 border-slate-100 opacity-50 cursor-not-allowed' : 'border-slate-200 hover:border-blue-300 hover:bg-blue-50/50'}`}>
+                                                    <div>
+                                                        <p className="font-semibold text-sm text-slate-800">{detail.product?.name}</p>
+                                                        <p className="text-xs text-slate-400">Qty: {detail.quantity} | Diretur: {returned} | Sisa: {available}</p>
+                                                    </div>
+                                                    <p className="font-mono text-sm text-slate-700">{formatCurrency(detail.unit_price)}</p>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                </>
+                            )}
                         </div>
 
                         {items.length > 0 && (

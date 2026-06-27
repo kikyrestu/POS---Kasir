@@ -3,11 +3,14 @@ import AppLayout from '@/Layouts/AppLayout';
 import { Plus, Edit2, Trash2, Tag } from 'lucide-react';
 import { Badge, Modal, Button, Input } from '@/Components/UI';
 import { useState } from 'react';
+import IconSelector from '@/Components/IconSelector';
+import DynamicIcon from '@/Components/DynamicIcon';
 
 export default function CategoryIndex({ categories }) {
     const [showForm, setShowForm] = useState(false);
     const [editTarget, setEditTarget] = useState(null);
     const [deleteTarget, setDeleteTarget] = useState(null);
+    const [showIconSelector, setShowIconSelector] = useState(false);
 
     const form = useForm({
         name: '', icon: '', description: '', is_active: true,
@@ -61,7 +64,7 @@ export default function CategoryIndex({ categories }) {
                         <div className="flex items-start justify-between mb-3">
                             <div className="flex items-center gap-3">
                                 <div className="w-10 h-10 bg-blue-50 rounded-xl flex items-center justify-center text-lg">
-                                    {cat.icon || <Tag className="w-5 h-5 text-blue-500" />}
+                                    <DynamicIcon name={cat.icon} className="w-5 h-5 text-blue-500" />
                                 </div>
                                 <div>
                                     <h3 className="font-bold text-slate-900">{cat.name}</h3>
@@ -89,7 +92,18 @@ export default function CategoryIndex({ categories }) {
             <Modal show={showForm} onClose={() => setShowForm(false)} title={editTarget ? 'Edit Kategori' : 'Tambah Kategori'}>
                 <form onSubmit={handleSubmit} className="space-y-4">
                     <Input label="Nama Kategori *" value={form.data.name} onChange={e => form.setData('name', e.target.value)} error={form.errors.name} placeholder="Makanan, Minuman, dll" />
-                    <Input label="Icon (Emoji)" value={form.data.icon} onChange={e => form.setData('icon', e.target.value)} placeholder="🍔 📱 👕" />
+                    
+                    <div className="mb-2">
+                        <label className="block text-sm font-semibold text-slate-700 mb-1.5">Icon Kategori</label>
+                        <div className="flex items-center gap-3">
+                            <div className="w-12 h-12 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-center text-slate-600">
+                                <DynamicIcon name={form.data.icon} className="w-6 h-6 text-blue-500" />
+                            </div>
+                            <Button type="button" variant="secondary" onClick={() => setShowIconSelector(true)}>
+                                Pilih Icon
+                            </Button>
+                        </div>
+                    </div>
                     <div>
                         <label className="block text-sm font-semibold text-slate-700 mb-1.5">Deskripsi</label>
                         <textarea value={form.data.description} onChange={e => form.setData('description', e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30 resize-none h-16" placeholder="Deskripsi kategori (opsional)" />
@@ -108,6 +122,12 @@ export default function CategoryIndex({ categories }) {
                     <Button variant="danger" onClick={handleDelete}>Hapus</Button>
                 </div>
             </Modal>
+
+            <IconSelector 
+                show={showIconSelector} 
+                onClose={() => setShowIconSelector(false)} 
+                onSelect={(iconName) => form.setData('icon', iconName)} 
+            />
         </AppLayout>
     );
 }

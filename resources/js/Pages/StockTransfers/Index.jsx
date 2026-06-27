@@ -45,8 +45,9 @@ export default function StockTransferIndex({ transfers, filters }) {
                 </form>
             </div>
 
-            <div className="bg-white/80 backdrop-blur-sm border border-slate-200/60 rounded-2xl overflow-hidden">
-                <div className="overflow-x-auto">
+            <div className="bg-white/80 backdrop-blur-sm border border-slate-200/60 rounded-2xl overflow-hidden mt-6">
+                {/* Desktop Table */}
+                <div className="overflow-x-auto hidden md:block">
                     <table className="w-full text-left">
                         <thead>
                             <tr className="bg-slate-50/80 text-slate-500 text-xs uppercase tracking-wider border-b border-slate-200">
@@ -96,6 +97,60 @@ export default function StockTransferIndex({ transfers, filters }) {
                         </tbody>
                     </table>
                 </div>
+
+                {/* Mobile Cards */}
+                <div className="grid grid-cols-1 gap-4 md:hidden p-4 bg-slate-50/50">
+                    {transfers.data?.length > 0 ? transfers.data.map((tr) => (
+                        <div key={tr.id} className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm flex flex-col gap-3 relative">
+                            <div className="absolute top-4 right-4">
+                                <Badge variant={statusMap[tr.status]?.variant || 'default'}>
+                                    {statusMap[tr.status]?.label || tr.status}
+                                </Badge>
+                            </div>
+                            
+                            <div>
+                                <div className="flex items-center gap-2 mb-1">
+                                    <ArrowRightLeft className="w-4 h-4 text-blue-500" />
+                                    <span className="font-mono font-bold text-slate-800">{tr.transfer_number}</span>
+                                </div>
+                                <p className="text-xs text-slate-500">{tr.transfer_date}</p>
+                            </div>
+                            
+                            <div className="flex items-center justify-between bg-slate-50 rounded-lg p-3 border border-slate-100">
+                                <div className="flex-1">
+                                    <p className="text-[10px] font-semibold text-slate-500 uppercase mb-0.5">Dari Gudang</p>
+                                    <p className="font-bold text-slate-700 text-sm truncate">{tr.from_warehouse?.name}</p>
+                                </div>
+                                <ArrowRightLeft className="w-4 h-4 text-slate-300 shrink-0 mx-2" />
+                                <div className="flex-1 text-right">
+                                    <p className="text-[10px] font-semibold text-slate-500 uppercase mb-0.5">Ke Gudang</p>
+                                    <p className="font-bold text-slate-700 text-sm truncate">{tr.to_warehouse?.name}</p>
+                                </div>
+                            </div>
+
+                            <div className="flex items-center justify-between mt-1 pt-3 border-t border-slate-100">
+                                <div className="flex items-center gap-2">
+                                    <span className="text-xs text-slate-500">Item Transfer:</span>
+                                    <Badge variant="info">{tr.details_count || 0}</Badge>
+                                </div>
+                                <div className="flex items-center gap-1">
+                                    <Link href={route('stock-transfers.show', tr.id)} className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors bg-slate-50">
+                                        <Eye className="w-4 h-4" />
+                                    </Link>
+                                    <button onClick={() => setDeleteTarget(tr.id)} className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors bg-slate-50">
+                                        <Trash2 className="w-4 h-4" />
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    )) : (
+                        <div className="text-center py-10 text-slate-400 bg-white rounded-xl border border-dashed border-slate-300">
+                            <ArrowRightLeft className="w-12 h-12 mx-auto text-slate-300 mb-3 opacity-50" />
+                            <p className="text-sm font-medium">Belum ada transfer barang.</p>
+                        </div>
+                    )}
+                </div>
+
                 {transfers.links && <Pagination links={transfers.links} />}
             </div>
 

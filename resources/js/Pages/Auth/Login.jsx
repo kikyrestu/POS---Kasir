@@ -19,16 +19,13 @@ export default function Login({ status, canResetPassword }) {
 
     return (
         <div className="min-h-screen flex bg-slate-50">
-            <Head title="NEXAPOS Cashier App - Log in" />
+            <Head title="BuildyPOS Cashier App - Log in" />
 
             {/* Left side styling - Brand */}
             <div className="hidden lg:flex lg:flex-col lg:w-1/2 bg-gradient-to-br from-blue-900 via-blue-800 to-teal-900 p-12 text-white justify-between relative overflow-hidden">
                 <div className="relative z-10">
-                    <div className="flex items-center gap-3 mb-10">
-                        <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center font-bold text-blue-900 text-xl shadow-lg">
-                            N
-                        </div>
-                        <h1 className="text-2xl font-black tracking-tight" style={{fontFamily: "'Outfit', sans-serif"}}>NEXAPOS</h1>
+                    <div className="flex items-center mb-10">
+                        <img src="/images/logo.png" alt="BuildyPOS Logo" className="h-10 w-auto object-contain brightness-0 invert" />
                     </div>
                     <h2 className="text-5xl font-black mb-6 leading-tight" style={{fontFamily: "'Inter', sans-serif"}}>
                         Empower your retail business.
@@ -43,18 +40,15 @@ export default function Login({ status, canResetPassword }) {
                 <div className="absolute top-1/4 -right-20 w-80 h-80 bg-teal-400 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob animation-delay-2000"></div>
                 
                 <div className="relative z-10 text-sm text-blue-300">
-                    &copy; {new Date().getFullYear()} NEXAPOS Team. All rights reserved.
+                    &copy; {new Date().getFullYear()} BuildyPOS Team. All rights reserved.
                 </div>
             </div>
 
             {/* Right side styling - Form */}
             <div className="w-full lg:w-1/2 flex items-center justify-center p-8 sm:p-12 md:p-24 relative bg-white">
                 <div className="w-full max-w-md">
-                    <div className="lg:hidden flex items-center gap-3 mb-8">
-                        <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center font-bold text-white text-xl shadow-md">
-                            N
-                        </div>
-                        <h1 className="text-2xl font-black text-slate-800">NEXAPOS</h1>
+                    <div className="lg:hidden flex items-center mb-8">
+                        <img src="/images/logo.png" alt="BuildyPOS Logo" className="h-8 w-auto object-contain" />
                     </div>
 
                     <h3 className="text-3xl font-bold text-slate-900 mb-2">Welcome Back</h3>

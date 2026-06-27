@@ -41,7 +41,8 @@ export default function ExpensesIndex({ expenses }) {
             </div>
 
             <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
-                <div className="overflow-x-auto">
+                {/* Desktop Table */}
+                <div className="overflow-x-auto hidden md:block">
                     <table className="w-full text-left text-sm text-slate-600">
                         <thead className="bg-slate-50 border-b border-slate-200 text-slate-900">
                             <tr>
@@ -94,6 +95,56 @@ export default function ExpensesIndex({ expenses }) {
                             ))}
                         </tbody>
                     </table>
+                </div>
+
+                {/* Mobile Cards */}
+                <div className="grid grid-cols-1 gap-4 md:hidden p-4 bg-slate-50/50">
+                    {expenses.data.length === 0 ? (
+                        <div className="text-center py-8 text-slate-400 bg-white rounded-xl border border-dashed border-slate-300">
+                            <Wallet className="w-12 h-12 mx-auto mb-3 opacity-20" />
+                            <p className="text-sm font-medium">Belum ada catatan pengeluaran.</p>
+                        </div>
+                    ) : expenses.data.map((expense) => (
+                        <div key={expense.id} className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm flex flex-col gap-3">
+                            <div className="flex justify-between items-start">
+                                <div>
+                                    <p className="font-bold text-slate-900">{new Date(expense.expense_date).toLocaleDateString('id-ID', {day: 'numeric', month: 'short', year: 'numeric'})}</p>
+                                    <span className={`inline-block mt-1 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${
+                                        expense.type === 'kasbon' ? 'bg-amber-100 text-amber-700' :
+                                        expense.type === 'operasional' ? 'bg-blue-100 text-blue-700' :
+                                        'bg-slate-100 text-slate-700'
+                                    }`}>
+                                        {expense.type}
+                                    </span>
+                                </div>
+                                <div className="text-right">
+                                    <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Nominal</p>
+                                    <p className="font-bold text-rose-600">-Rp{new Intl.NumberFormat('id-ID').format(expense.amount)}</p>
+                                </div>
+                            </div>
+                            
+                            <div className="bg-slate-50 border border-slate-100 rounded-lg p-3 mt-1">
+                                <span className="text-xs font-semibold text-slate-500 block mb-1">Keterangan</span>
+                                <span className="text-sm text-slate-700">{expense.notes}</span>
+                            </div>
+                            
+                            <div className="flex items-center justify-between pt-2 border-t border-slate-100">
+                                <div>
+                                    <p className="text-xs text-slate-500">Pencatat: <span className="font-semibold text-slate-700">{expense.user?.name}</span></p>
+                                    {expense.shift_id && <span className="block text-[10px] text-emerald-600 font-semibold">[Shift Terpotong]</span>}
+                                </div>
+                                <Link
+                                    href={route('expenses.destroy', expense.id)}
+                                    method="delete"
+                                    as="button"
+                                    className="p-2 text-rose-500 hover:text-rose-700 hover:bg-rose-50 rounded-lg transition-colors border border-rose-100"
+                                    preserveScroll
+                                >
+                                    <Trash2 className="w-4 h-4" />
+                                </Link>
+                            </div>
+                        </div>
+                    ))}
                 </div>
             </div>
 

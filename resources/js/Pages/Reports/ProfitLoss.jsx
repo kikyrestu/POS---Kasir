@@ -71,7 +71,8 @@ export default function ProfitLoss({ salesData, totals, filters }) {
             </div>
 
             <div className="bg-white/80 backdrop-blur-sm border border-slate-200/60 rounded-2xl overflow-hidden mt-6">
-                <div className="overflow-x-auto">
+                {/* Desktop Table */}
+                <div className="overflow-x-auto hidden md:block">
                     <table className="w-full text-left">
                         <thead>
                             <tr className="bg-slate-50/80 text-slate-500 text-xs uppercase tracking-wider border-b border-slate-200">
@@ -101,6 +102,41 @@ export default function ProfitLoss({ salesData, totals, filters }) {
                             )}
                         </tbody>
                     </table>
+                </div>
+
+                {/* Mobile Cards */}
+                <div className="grid grid-cols-1 gap-4 md:hidden p-4 bg-slate-50/50">
+                    {salesData?.length > 0 ? salesData.map((data, i) => (
+                        <div key={i} className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm flex flex-col gap-3">
+                            <div className="flex items-center gap-2 border-b border-slate-100 pb-2">
+                                <Calendar className="w-5 h-5 text-slate-400" />
+                                <span className="font-bold text-slate-800">{data.sale_date}</span>
+                            </div>
+                            <div className="grid grid-cols-2 gap-3 mt-1">
+                                <div>
+                                    <p className="text-xs font-semibold text-slate-500 mb-0.5">Omset (Gross)</p>
+                                    <p className="font-mono font-semibold text-slate-700">{formatCurrency(data.gross_revenue)}</p>
+                                </div>
+                                <div className="text-right">
+                                    <p className="text-xs font-semibold text-slate-500 mb-0.5">Diskon</p>
+                                    <p className="font-mono font-semibold text-rose-500">-{formatCurrency(data.total_discounts)}</p>
+                                </div>
+                                <div>
+                                    <p className="text-xs font-semibold text-slate-500 mb-0.5">Netto</p>
+                                    <p className="font-mono font-bold text-slate-800">{formatCurrency(data.net_revenue)}</p>
+                                </div>
+                                <div className="text-right">
+                                    <p className="text-xs font-semibold text-emerald-600 mb-0.5">Laba (Profit)</p>
+                                    <p className="font-mono font-bold text-emerald-600">{formatCurrency(data.total_profit)}</p>
+                                </div>
+                            </div>
+                        </div>
+                    )) : (
+                        <div className="text-center py-8 text-slate-400 bg-white rounded-xl border border-dashed border-slate-300">
+                            <TrendingUp className="w-12 h-12 mx-auto mb-3 opacity-20" />
+                            <p className="text-sm font-medium">Tidak ada data penjualan pada rentang tanggal tersebut.</p>
+                        </div>
+                    )}
                 </div>
             </div>
         </AppLayout>

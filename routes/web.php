@@ -32,37 +32,39 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard')->middleware('permission:dashboard');
 
     // POS
-    Route::get('/pos', [\App\Http\Controllers\PosController::class, 'index'])->name('pos.index')->middleware('permission:pos.view');
-    Route::post('/pos', [\App\Http\Controllers\PosController::class, 'store'])->name('pos.store')->middleware('permission:pos.view');
+    Route::get('/pos', [\App\Http\Controllers\PosController::class, 'index'])->name('pos.index')->middleware('permission:pos');
+    Route::post('/pos', [\App\Http\Controllers\PosController::class, 'store'])->name('pos.store')->middleware('permission:pos');
     
     // Hold / Suspend Transactions
-    Route::get('/pos/held', [\App\Http\Controllers\HoldTransactionController::class, 'index'])->name('pos.held.index')->middleware('permission:pos.view');
-    Route::post('/pos/held', [\App\Http\Controllers\HoldTransactionController::class, 'store'])->name('pos.held.store')->middleware('permission:pos.view');
-    Route::delete('/pos/held/{holdTransaction}', [\App\Http\Controllers\HoldTransactionController::class, 'destroy'])->name('pos.held.destroy')->middleware('permission:pos.view');
+    Route::get('/pos/held', [\App\Http\Controllers\HoldTransactionController::class, 'index'])->name('pos.held.index')->middleware('permission:pos');
+    Route::post('/pos/held', [\App\Http\Controllers\HoldTransactionController::class, 'store'])->name('pos.held.store')->middleware('permission:pos');
+    Route::delete('/pos/held/{holdTransaction}', [\App\Http\Controllers\HoldTransactionController::class, 'destroy'])->name('pos.held.destroy')->middleware('permission:pos');
     // Shift Operations
-    Route::post('/shifts/open', [\App\Http\Controllers\ShiftController::class, 'open'])->name('shifts.open')->middleware('permission:pos.view');
-    Route::post('/shifts/close', [\App\Http\Controllers\ShiftController::class, 'close'])->name('shifts.close')->middleware('permission:pos.view');
-    Route::get('/api/shifts/closing-data', [\App\Http\Controllers\ShiftController::class, 'getClosingData'])->name('shifts.closing-data')->middleware('permission:pos.view');
+    Route::post('/shifts/open', [\App\Http\Controllers\ShiftController::class, 'open'])->name('shifts.open')->middleware('permission:pos');
+    Route::post('/shifts/close', [\App\Http\Controllers\ShiftController::class, 'close'])->name('shifts.close')->middleware('permission:pos');
+    Route::get('/api/shifts/closing-data', [\App\Http\Controllers\ShiftController::class, 'getClosingData'])->name('shifts.closing-data')->middleware('permission:pos');
 
     // Petty Cash / Expenses
     Route::resource('expenses', \App\Http\Controllers\ExpenseController::class)->only(['index', 'store', 'destroy'])->middleware('permission:sales.view');
 
     // Sales
     Route::get('sales/{sale}/print', [SaleController::class, 'printReceipt'])->name('sales.print')->middleware('permission:sales.view');
-    Route::resource('sales', SaleController::class)->only(['index', 'show', 'destroy'])->middleware('permission:sales.view');
-    Route::delete('sales/{sale}', [SaleController::class, 'destroy'])->middleware('permission:sales.manage');
+    Route::resource('sales', SaleController::class)->only(['index', 'show'])->middleware('permission:sales.view');
+    Route::resource('sales', SaleController::class)->only(['destroy'])->middleware('permission:sales.manage');
     
     // Sale Returns
-    Route::resource('sale-returns', \App\Http\Controllers\SaleReturnController::class)->except(['edit', 'update'])->middleware('permission:sales.manage');
+    Route::resource('sale-returns', SaleReturnController::class)->only(['index', 'create', 'store', 'show', 'destroy'])->middleware('permission:sale-returns.manage');
 
     // Products
     Route::get('/products/export', [ProductController::class, 'export'])->name('products.export')->middleware('permission:products.manage');
     Route::get('/products/template', [ProductController::class, 'downloadTemplate'])->name('products.template')->middleware('permission:products.manage');
     Route::post('/products/import', [ProductController::class, 'import'])->name('products.import')->middleware('permission:products.manage');
-    Route::resource('products', ProductController::class)->only(['index', 'show'])->middleware('permission:products.view');
     Route::resource('products', ProductController::class)->except(['index', 'show'])->middleware('permission:products.manage');
-    Route::get('/barcodes', [\App\Http\Controllers\BarcodeController::class, 'index'])->name('barcodes.index')->middleware('permission:products.manage');
+    Route::resource('products', ProductController::class)->only(['index', 'show'])->middleware('permission:products.view');
     Route::get('/api/products/search', [ProductController::class, 'search'])->name('products.search')->middleware('permission:products.view');
+
+    // Barcodes
+    Route::get('/barcodes', [BarcodeController::class, 'index'])->name('barcodes.index')->middleware('permission:barcodes.print');
 
     // Categories
     Route::resource('categories', CategoryController::class)->except(['show', 'create', 'edit'])->middleware('permission:categories.manage');
@@ -76,21 +78,14 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // Warehouses
     Route::resource('warehouses', WarehouseController::class)->except(['create', 'edit'])->middleware('permission:warehouses.manage');
 
-    // Sales
-    Route::resource('sales', SaleController::class)->only(['index', 'show'])->middleware('permission:sales.view');
-    Route::resource('sales', SaleController::class)->only(['destroy'])->middleware('permission:sales.manage');
-
-    // Sale Returns
-    Route::resource('sale-returns', SaleReturnController::class)->only(['index', 'create', 'store', 'show', 'destroy'])->middleware('permission:sale-returns.manage');
-
     // Sale Tempo (Piutang)
     Route::get('/sales-tempo', [SaleTempoController::class, 'index'])->name('sales-tempo.index')->middleware('permission:sales-tempo.view');
     Route::get('/sales-tempo/{sale}', [SaleTempoController::class, 'show'])->name('sales-tempo.show')->middleware('permission:sales-tempo.view');
     Route::post('/sales-tempo/{sale}/payment', [SaleTempoController::class, 'addPayment'])->name('sales-tempo.add-payment')->middleware('permission:sales-tempo.manage');
 
     // Purchases
-    Route::resource('purchases', PurchaseController::class)->only(['index', 'show'])->middleware('permission:purchases.view');
     Route::resource('purchases', PurchaseController::class)->except(['index', 'show', 'edit', 'update'])->middleware('permission:purchases.manage');
+    Route::resource('purchases', PurchaseController::class)->only(['index', 'show'])->middleware('permission:purchases.view');
 
     // Purchase Returns
     Route::resource('purchase-returns', PurchaseReturnController::class)->only(['index', 'create', 'store', 'show', 'destroy'])->middleware('permission:purchase-returns.manage');
@@ -103,9 +98,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
     
     // Stock Movements
     Route::get('/stock-movements', [StockMovementController::class, 'index'])->name('stock-movements.index')->middleware('permission:warehouses.manage');
-
-    // Barcodes
-    Route::get('/barcodes', [BarcodeController::class, 'index'])->name('barcodes.index')->middleware('permission:barcodes.print');
 
     // Reports
     Route::get('/reports/sales-by-invoice', [ReportController::class, 'salesByInvoice'])->name('reports.sales-by-invoice')->middleware('permission:reports.view');
@@ -135,3 +127,4 @@ Route::middleware(['auth', 'verified'])->group(function () {
 });
 
 require __DIR__.'/auth.php';
+
