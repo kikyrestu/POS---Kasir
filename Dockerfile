@@ -1,5 +1,5 @@
 # Stage 1: Build Node.js assets
-FROM node:18 AS node-build
+FROM node:20 AS node-build
 WORKDIR /app
 COPY package*.json ./
 RUN npm install --legacy-peer-deps
