@@ -1,6 +1,6 @@
 import { Head, router } from '@inertiajs/react';
 import AppLayout from '@/Layouts/AppLayout';
-import { Search, ArrowDownLeft, ArrowUpRight } from 'lucide-react';
+import { Search, ArrowDownLeft, ArrowUpRight, ArrowRightLeft } from 'lucide-react';
 import { Badge, Pagination } from '@/Components/UI';
 import { useState } from 'react';
 
