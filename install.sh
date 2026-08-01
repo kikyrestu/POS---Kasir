@@ -44,6 +44,8 @@ sed -i "s/APP_ENV=local/APP_ENV=production/" .env
 sed -i "s/APP_DEBUG=true/APP_DEBUG=false/" .env
 sed -i "s/CENTRAL_DOMAIN=nexapos.localhost/CENTRAL_DOMAIN=$domain/" .env
 sed -i "s/DB_HOST=127.0.0.1/DB_HOST=mysql/" .env
+sed -i "s/DB_PASSWORD=/DB_PASSWORD=secret/" .env
+sed -i "s/DB_DATABASE=pos_db/DB_DATABASE=pos_kasir/" .env
 
 echo "✅ .env updated for domain $domain"
 echo ""
@@ -57,7 +59,7 @@ sleep 15
 
 # 3. Setup Laravel Application
 echo "📦 Installing PHP dependencies..."
-docker compose exec app composer install --optimize-autoloader --no-dev
+
 
 echo "🔑 Generating Application Key..."
 docker compose exec app php artisan key:generate
