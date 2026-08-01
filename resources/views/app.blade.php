@@ -13,6 +13,14 @@
 
         <!-- Scripts -->
         @routes
+        <script>
+            if (typeof window !== 'undefined' && typeof Ziggy !== 'undefined') {
+                Ziggy.defaults = Ziggy.defaults || {};
+                @if(tenant('id'))
+                Ziggy.defaults.tenant = '{{ tenant('id') }}';
+                @endif
+            }
+        </script>
         @viteReactRefresh
         @vite(['resources/js/app.jsx', "resources/js/Pages/{$page['component']}.jsx"])
         @inertiaHead
