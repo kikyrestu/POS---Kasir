@@ -73,6 +73,8 @@ echo "📦 Installing PHP dependencies..."
 echo "📂 Creating storage link..."
 docker compose exec app php artisan storage:link
 
+docker compose exec app chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache
+
 echo "🛠️  Running database migrations and seeders..."
 docker compose exec app php artisan migrate --force
 docker compose exec app php artisan db:seed --force
