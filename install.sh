@@ -47,6 +47,13 @@ sed -i "s/DB_HOST=127.0.0.1/DB_HOST=mysql/" .env
 sed -i "s/DB_PASSWORD=/DB_PASSWORD=secret/" .env
 sed -i "s/DB_DATABASE=pos_db/DB_DATABASE=pos_kasir/" .env
 
+# Generate APP_KEY locally if empty
+if grep -q "^APP_KEY=$" .env; then
+    NEW_KEY="base64:$(openssl rand -base64 32)"
+    sed -i "s|^APP_KEY=$|APP_KEY=$NEW_KEY|" .env
+    echo "🔑 Generated new APP_KEY"
+fi
+
 echo "✅ .env updated for domain $domain"
 echo ""
 
@@ -61,8 +68,7 @@ sleep 15
 echo "📦 Installing PHP dependencies..."
 
 
-echo "🔑 Generating Application Key..."
-docker compose exec app php artisan key:generate
+# Application Key is already generated in .env
 
 echo "📂 Creating storage link..."
 docker compose exec app php artisan storage:link
