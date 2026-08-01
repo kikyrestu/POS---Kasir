@@ -58,7 +58,7 @@ export default function Create() {
                                     onChange={(e) => setData('id', e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))}
                                 />
                                 <span className="inline-flex items-center px-3 rounded-r-md border border-l-0 border-gray-300 bg-gray-50 text-gray-500 text-sm">
-                                    .nexapos.localhost
+                                    .buildypos.store
                                 </span>
                             </div>
                             <p className="text-xs text-gray-500 mt-1">Only lowercase letters, numbers, and dashes.</p>

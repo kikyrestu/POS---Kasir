@@ -110,7 +110,7 @@ export default function SubscriptionsShow({ subscription }) {
                             </div>
                             <div className="flex flex-col pb-3 border-b border-slate-50">
                                 <span className="text-xs text-slate-500 mb-1">Domain URL</span>
-                                <span className="text-sm text-blue-600">{tenant?.id}.nexapos.test</span>
+                                <span className="text-sm text-blue-600">{tenant?.id}.buildypos.store</span>
                             </div>
                         </CardContent>
                     </Card>

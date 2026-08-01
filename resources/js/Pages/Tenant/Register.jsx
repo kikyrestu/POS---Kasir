@@ -11,7 +11,7 @@ export default function Register() {
         password: '',
     });
 
-    const [domainBase, setDomainBase] = useState('.nexapos.localhost');
+    const [domainBase, setDomainBase] = useState('.buildypos.store');
 
     useEffect(() => {
         setDomainBase('.' + window.location.host);

@@ -80,7 +80,7 @@ class TenantRegistrationController extends Controller
         ]);
 
         // Redirect to the tenant's login page
-        $tenantUrl = 'http://' . $request->subdomain . '.' . env('CENTRAL_DOMAIN', 'nexapos.localhost') . ':8000/login';
+        $tenantUrl = 'https://' . $request->subdomain . '.' . env('CENTRAL_DOMAIN', 'buildypos.store') . '/login';
         
         return Inertia::render('Tenant/RegisterSuccess', [
             'url' => $tenantUrl
