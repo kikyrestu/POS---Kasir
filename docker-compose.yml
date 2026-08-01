@@ -35,8 +35,8 @@ services:
     environment:
       MYSQL_DATABASE: ${DB_DATABASE:-pos_kasir}
       MYSQL_ROOT_PASSWORD: ${DB_PASSWORD:-password}
-      MYSQL_USER: ${DB_USERNAME:-user}
-      MYSQL_PASSWORD: ${DB_PASSWORD:-password}
+
+
     volumes:
       - mysql-data:/var/lib/mysql
     networks:
