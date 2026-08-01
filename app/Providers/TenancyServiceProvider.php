@@ -123,6 +123,8 @@ class TenancyServiceProvider extends ServiceProvider
         $this->app->booted(function () {
             if (file_exists(base_path('routes/tenant.php'))) {
                 Route::namespace(static::$controllerNamespace)
+                    ->domain('{tenant}.' . env('CENTRAL_DOMAIN', 'nexapos.localhost'))
+                      ->where('tenant', '^(?!adminkita$).*')
                     ->group(base_path('routes/tenant.php'));
             }
         });
