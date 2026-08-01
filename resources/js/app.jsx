@@ -8,13 +8,17 @@ import { createRoot } from 'react-dom/client';
 const appName = import.meta.env.VITE_APP_NAME || 'BuildyPOS';
 
 createInertiaApp({
-    title: (title) => `${title} - ${appName}`,
+    title: (title) => {
+        const storeName = window.global_settings?.store_name || appName;
+        return `${title} - ${storeName}`;
+    },
     resolve: (name) =>
         resolvePageComponent(
             `./Pages/${name}.jsx`,
             import.meta.glob('./Pages/**/*.jsx'),
         ),
     setup({ el, App, props }) {
+        window.global_settings = props.initialPage.props.global_settings;
         const root = createRoot(el);
 
         root.render(<App {...props} />);

@@ -14,10 +14,11 @@ class Sale extends Model
     use SoftDeletes, LogsActivity;
 
     protected $fillable = [
-        'invoice_number', 'customer_id', 'warehouse_id', 'user_id', 'shift_id',
+        'invoice_number', 'customer_id', 'voucher_id', 'warehouse_id', 'user_id', 'shift_id',
         'sale_date', 'due_date', 'subtotal', 'discount_amount', 'discount_percent',
         'tax', 'total', 'paid', 'change_amount', 'profit',
         'payment_type', 'payment_status', 'status', 'notes',
+        'order_type', 'table_id', 'kitchen_status'
     ];
 
     protected $casts = [
@@ -36,6 +37,11 @@ class Sale extends Model
     public function customer(): BelongsTo
     {
         return $this->belongsTo(Customer::class);
+    }
+
+    public function voucher(): BelongsTo
+    {
+        return $this->belongsTo(Voucher::class);
     }
 
     public function shift(): BelongsTo

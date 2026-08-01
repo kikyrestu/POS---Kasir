@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { X } from 'lucide-react';
 
-export function Modal({ show, onClose, title, children, maxWidth = 'md' }) {
-    if (!show) return null;
+export function Modal({ show, isOpen, onClose, title, children, maxWidth = 'md' }) {
+    if (!show && !isOpen) return null;
 
     const widthClass = {
         sm: 'max-w-sm',
@@ -122,4 +122,54 @@ export function Pagination({ links }) {
             ))}
         </div>
     );
+}
+
+export function CardHeader({ children, className = '' }) {
+    return <div className={`p-6 pb-0 ${className}`}>{children}</div>;
+}
+
+export function CardTitle({ children, className = '' }) {
+    return <h3 className={`text-lg font-bold text-slate-900 ${className}`}>{children}</h3>;
+}
+
+export function CardContent({ children, className = '' }) {
+    return <div className={`p-6 ${className}`}>{children}</div>;
+}
+
+export function Label({ htmlFor, value, children, className = '' }) {
+    return (
+        <label htmlFor={htmlFor} className={`block text-sm font-medium text-slate-700 mb-1 ${className}`}>
+            {value ? value : children}
+        </label>
+    );
+}
+
+export function Table({ children, className = '' }) {
+    return (
+        <div className={`w-full overflow-x-auto ${className}`}>
+            <table className="w-full text-sm text-left text-slate-500">
+                {children}
+            </table>
+        </div>
+    );
+}
+
+export function TableHeader({ children, className = '' }) {
+    return <thead className={`text-xs text-slate-700 uppercase bg-slate-50 ${className}`}>{children}</thead>;
+}
+
+export function TableBody({ children, className = '' }) {
+    return <tbody className={`divide-y divide-slate-200 ${className}`}>{children}</tbody>;
+}
+
+export function TableRow({ children, className = '', ...props }) {
+    return <tr className={`bg-white hover:bg-slate-50 transition-colors ${className}`} {...props}>{children}</tr>;
+}
+
+export function TableHead({ children, className = '' }) {
+    return <th scope="col" className={`px-6 py-4 font-semibold ${className}`}>{children}</th>;
+}
+
+export function TableCell({ children, className = '', colSpan }) {
+    return <td className={`px-6 py-4 ${className}`} colSpan={colSpan}>{children}</td>;
 }

@@ -225,13 +225,17 @@ export default function ProductIndex({ products, categories, filters }) {
                                     </div>
                                     <div className="text-right">
                                         <p className="text-[10px] text-slate-500 uppercase tracking-wider font-semibold">Stok</p>
-                                        <span className={`text-sm font-bold ${
-                                            totalStock <= 0 ? 'text-rose-600' :
-                                            totalStock <= (product.stock_minimum || 5) ? 'text-amber-600' :
-                                            'text-emerald-600'
-                                        }`}>
-                                            {totalStock} {product.unit}
-                                        </span>
+                                        {product.has_variants ? (
+                                            <span className="text-sm font-bold text-blue-600">{product.variants?.length || 0} Varian</span>
+                                        ) : (
+                                            <span className={`text-sm font-bold ${
+                                                totalStock <= 0 ? 'text-rose-600' :
+                                                totalStock <= (product.stock_minimum || 5) ? 'text-amber-600' :
+                                                'text-emerald-600'
+                                            }`}>
+                                                {totalStock} {product.unit}
+                                            </span>
+                                        )}
                                     </div>
                                 </div>
                                 <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">

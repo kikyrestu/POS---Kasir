@@ -12,9 +12,11 @@ use Inertia\Inertia;
 
 class ProductController extends Controller
 {
+    use \App\Traits\ChecksTenantLimits;
+
     public function index(Request $request)
     {
-        $products = Product::with(['category', 'stocks.warehouse'])
+        $products = Product::with(['category', 'stocks.warehouse', 'variants'])
             ->when($request->search, function ($q, $s) {
                 $q->where(function ($q) use ($s) {
                     $q->where('name', 'like', "%{$s}%")
@@ -53,6 +55,8 @@ class ProductController extends Controller
 
     public function store(Request $request)
     {
+        $this->authorizeLimit('max_products', Product::count(), 'Produk');
+
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'barcode' => 'nullable|string|max:20|unique:products',
@@ -65,9 +69,17 @@ class ProductController extends Controller
             'description' => 'nullable|string',
             'image' => 'nullable|image|max:2048',
             'expiry_date' => 'nullable|date',
+            'has_variants' => 'boolean',
             'stocks' => 'nullable|array',
             'stocks.*.warehouse_id' => 'required|exists:warehouses,id',
             'stocks.*.quantity' => 'required|integer|min:0',
+            'variants' => 'nullable|array',
+            'variants.*.name' => 'required_with:variants|string',
+            'variants.*.sku' => 'nullable|string',
+            'variants.*.price' => 'nullable|numeric|min:0',
+            'variants.*.stocks' => 'nullable|array',
+            'variants.*.stocks.*.warehouse_id' => 'required_with:variants.*.stocks|exists:warehouses,id',
+            'variants.*.stocks.*.quantity' => 'required_with:variants.*.stocks|integer|min:0',
         ]);
 
         if ($request->hasFile('image')) {
@@ -76,13 +88,34 @@ class ProductController extends Controller
 
         $product = Product::create($validated);
 
-        if (!empty($validated['stocks'])) {
-            foreach ($validated['stocks'] as $stock) {
-                ProductStock::create([
-                    'product_id' => $product->id,
-                    'warehouse_id' => $stock['warehouse_id'],
-                    'quantity' => $stock['quantity'],
+        if (!empty($validated['has_variants']) && !empty($validated['variants'])) {
+            foreach ($validated['variants'] as $variantData) {
+                $variant = $product->variants()->create([
+                    'name' => $variantData['name'],
+                    'sku' => $variantData['sku'] ?? null,
+                    'price' => $variantData['price'] ?? null,
                 ]);
+
+                if (!empty($variantData['stocks'])) {
+                    foreach ($variantData['stocks'] as $stock) {
+                        ProductStock::create([
+                            'product_id' => $product->id,
+                            'product_variant_id' => $variant->id,
+                            'warehouse_id' => $stock['warehouse_id'],
+                            'quantity' => $stock['quantity'],
+                        ]);
+                    }
+                }
+            }
+        } else {
+            if (!empty($validated['stocks'])) {
+                foreach ($validated['stocks'] as $stock) {
+                    ProductStock::create([
+                        'product_id' => $product->id,
+                        'warehouse_id' => $stock['warehouse_id'],
+                        'quantity' => $stock['quantity'],
+                    ]);
+                }
             }
         }
 
@@ -93,7 +126,7 @@ class ProductController extends Controller
 
     public function edit(Product $product)
     {
-        $product->load(['category', 'stocks.warehouse', 'prices']);
+        $product->load(['category', 'stocks.warehouse', 'variants', 'prices']);
 
         return Inertia::render('Products/Form', [
             'product' => $product,
@@ -117,6 +150,18 @@ class ProductController extends Controller
             'image' => 'nullable|image|max:2048',
             'expiry_date' => 'nullable|date',
             'is_active' => 'boolean',
+            'has_variants' => 'boolean',
+            'stocks' => 'nullable|array',
+            'stocks.*.warehouse_id' => 'required|exists:warehouses,id',
+            'stocks.*.quantity' => 'required|integer|min:0',
+            'variants' => 'nullable|array',
+            'variants.*.id' => 'nullable|integer|exists:product_variants,id',
+            'variants.*.name' => 'required_with:variants|string',
+            'variants.*.sku' => 'nullable|string',
+            'variants.*.price' => 'nullable|numeric|min:0',
+            'variants.*.stocks' => 'nullable|array',
+            'variants.*.stocks.*.warehouse_id' => 'required_with:variants.*.stocks|exists:warehouses,id',
+            'variants.*.stocks.*.quantity' => 'required_with:variants.*.stocks|integer|min:0',
         ]);
 
         if ($request->hasFile('image')) {
@@ -127,6 +172,64 @@ class ProductController extends Controller
         }
 
         $product->update($validated);
+
+        if (!empty($validated['has_variants']) && !empty($validated['variants'])) {
+            $existingVariantIds = $product->variants()->pluck('id')->toArray();
+            $incomingVariantIds = collect($validated['variants'])->pluck('id')->filter()->toArray();
+            
+            // Delete removed variants
+            $variantsToDelete = array_diff($existingVariantIds, $incomingVariantIds);
+            if (!empty($variantsToDelete)) {
+                $product->variants()->whereIn('id', $variantsToDelete)->delete();
+            }
+
+            foreach ($validated['variants'] as $variantData) {
+                if (!empty($variantData['id'])) {
+                    $variant = $product->variants()->find($variantData['id']);
+                    $variant->update([
+                        'name' => $variantData['name'],
+                        'sku' => $variantData['sku'] ?? null,
+                        'price' => $variantData['price'] ?? null,
+                    ]);
+                } else {
+                    $variant = $product->variants()->create([
+                        'name' => $variantData['name'],
+                        'sku' => $variantData['sku'] ?? null,
+                        'price' => $variantData['price'] ?? null,
+                    ]);
+                }
+
+                // Update stocks
+                if (!empty($variantData['stocks'])) {
+                    foreach ($variantData['stocks'] as $stock) {
+                        ProductStock::updateOrCreate(
+                            [
+                                'product_id' => $product->id,
+                                'product_variant_id' => $variant->id,
+                                'warehouse_id' => $stock['warehouse_id'],
+                            ],
+                            ['quantity' => $stock['quantity']]
+                        );
+                    }
+                }
+            }
+        } else {
+            // No variants, clean up old ones
+            $product->variants()->delete();
+            
+            if (!empty($validated['stocks'])) {
+                foreach ($validated['stocks'] as $stock) {
+                    ProductStock::updateOrCreate(
+                        [
+                            'product_id' => $product->id,
+                            'product_variant_id' => null,
+                            'warehouse_id' => $stock['warehouse_id'],
+                        ],
+                        ['quantity' => $stock['quantity']]
+                    );
+                }
+            }
+        }
 
         return redirect()->route('products.index')->with('success', 'Produk berhasil diperbarui.');
     }
@@ -154,7 +257,7 @@ class ProductController extends Controller
     {
         $searchTerm = $request->q ?? $request->query('query');
         
-        $products = Product::with(['stocks.warehouse', 'category'])
+        $products = Product::with(['stocks.warehouse', 'category', 'modifiers.options', 'variants.stocks'])
             ->where('is_active', true)
             ->when($searchTerm, function ($q, $s) {
                 $q->where(function ($q) use ($s) {

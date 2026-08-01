@@ -1,52 +1,39 @@
-# Stage 1: Build Node.js assets
-FROM node:20 AS node-build
+# Stage 1: Node Build
+FROM node:20 AS node-builder
 WORKDIR /app
 COPY package*.json ./
-RUN npm install --legacy-peer-deps
+RUN npm install
 COPY . .
 RUN npm run build
 
-# Stage 2: PHP Apache container
-FROM php:8.3-apache
+# Stage 2: Composer Dependencies
+FROM composer:2 AS composer-builder
+WORKDIR /app
+COPY composer.json composer.lock ./
+RUN composer install --no-dev --ignore-platform-reqs --no-scripts --prefer-dist
+COPY . .
+RUN composer dump-autoload --optimize
 
-# Install dependencies
-RUN apt-get update && apt-get install -y \
-    libpng-dev \
-    libjpeg-dev \
-    libfreetype6-dev \
-    libzip-dev \
+# Stage 3: PHP-FPM
+FROM php:8.3-fpm-alpine
+RUN apk add --no-cache \
     zip \
-    unzip \
-    && rm -rf /var/lib/apt/lists/*
+    libzip-dev \
+    freetype-dev \
+    libjpeg-turbo-dev \
+    libpng-dev \
+    icu-dev \
+    oniguruma-dev \
+    mysql-client \
+    && docker-php-ext-configure gd --with-freetype --with-jpeg \
+    && docker-php-ext-install pdo_mysql zip exif pcntl bcmath gd intl \
+    && rm -rf /var/cache/apk/*
 
-# Configure and install PHP extensions
-RUN docker-php-ext-configure gd --with-freetype --with-jpeg \
-    && docker-php-ext-install pdo pdo_mysql gd zip bcmath
-
-# Enable Apache mod_rewrite
-RUN a2enmod rewrite
-
-# Install Composer
-COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
-
-# Set working directory
 WORKDIR /var/www/html
 
-# Copy application files
-COPY . .
+COPY --from=composer-builder /app /var/www/html
+COPY --from=node-builder /app/public/build /var/www/html/public/build
 
-# Copy built Node.js assets from Stage 1
-COPY --from=node-build /app/public/build ./public/build
-
-# Install PHP dependencies
-RUN composer install --no-dev --optimize-autoloader
-
-# Set permissions
 RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache
 
-# Change Apache document root to public
-ENV APACHE_DOCUMENT_ROOT /var/www/html/public
-RUN sed -ri -e 's!/var/www/html!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/sites-available/*.conf
-RUN sed -ri -e 's!/var/www/!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/apache2.conf /etc/apache2/conf-available/*.conf
-
-EXPOSE 80
+CMD ["php-fpm"]

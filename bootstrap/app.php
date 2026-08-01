@@ -18,10 +18,14 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $middleware->alias([
             'permission' => \App\Http\Middleware\CheckPermission::class,
+            'saas_admin.auth' => \App\Http\Middleware\SaasAdminAuth::class,
+            'saas.feature' => \App\Http\Middleware\CheckSaaSFeature::class,
         ]);
 
         $middleware->trustProxies(at: '*');
     })
     ->withExceptions(function (Exceptions $exceptions): void {
-        //
+        $exceptions->renderable(function (\Stancl\Tenancy\Exceptions\TenantCouldNotBeIdentifiedByIdException|\Stancl\Tenancy\Exceptions\TenantCouldNotBeIdentifiedOnDomainException $e, $request) {
+            return response()->view('errors.404', ['message' => 'Toko tidak ditemukan atau sudah dihapus.'], 404);
+        });
     })->create();

@@ -17,54 +17,97 @@ class DashboardController extends Controller
 {
     public function index(Request $request)
     {
-        $currentYear = (int) ($request->year ?? Carbon::now()->year);
+        $period = $request->period ?? 'this_month';
         $today = Carbon::today();
+        
+        $startDate = match($period) {
+            'today' => Carbon::today(),
+            '7days' => Carbon::today()->subDays(6),
+            'this_month' => Carbon::today()->startOfMonth(),
+            'last_month' => Carbon::today()->subMonth()->startOfMonth(),
+            'this_year' => Carbon::today()->startOfYear(),
+            default => Carbon::today()->startOfMonth(),
+        };
+        
+        $endDate = match($period) {
+            'last_month' => Carbon::today()->subMonth()->endOfMonth(),
+            default => Carbon::today()->endOfDay(),
+        };
+
+        // Prev period for percentage comparison
+        $prevEndDate = $startDate->copy()->subDay()->endOfDay();
+        $daysDiff = $startDate->diffInDays($endDate);
+        $prevStartDate = $prevEndDate->copy()->subDays($daysDiff)->startOfDay();
 
         // ── Stats Cards ──
         $totalItemSold = SaleDetail::whereHas('sale', fn($q) => $q->where('status', 'completed')
-            ->whereYear('sale_date', $currentYear))
+            ->whereBetween('sale_date', [$startDate, $endDate]))
             ->sum('quantity');
         $prevItemSold = SaleDetail::whereHas('sale', fn($q) => $q->where('status', 'completed')
-            ->whereYear('sale_date', $currentYear - 1))
+            ->whereBetween('sale_date', [$prevStartDate, $prevEndDate]))
             ->sum('quantity');
 
-        $totalTransactions = Sale::where('status', 'completed')->whereYear('sale_date', $currentYear)->count();
-        $prevTransactions = Sale::where('status', 'completed')->whereYear('sale_date', $currentYear - 1)->count();
+        $totalTransactions = Sale::where('status', 'completed')->whereBetween('sale_date', [$startDate, $endDate])->count();
+        $prevTransactions = Sale::where('status', 'completed')->whereBetween('sale_date', [$prevStartDate, $prevEndDate])->count();
 
-        $totalIncome = Sale::where('status', 'completed')->whereYear('sale_date', $currentYear)->sum('total');
-        $prevIncome = Sale::where('status', 'completed')->whereYear('sale_date', $currentYear - 1)->sum('total');
+        $totalIncome = Sale::where('status', 'completed')->whereBetween('sale_date', [$startDate, $endDate])->sum('total');
+        $prevIncome = Sale::where('status', 'completed')->whereBetween('sale_date', [$prevStartDate, $prevEndDate])->sum('total');
 
         $totalActiveCustomers = Customer::where('is_active', true)->count();
         $prevActiveCustomers = Customer::where('is_active', true)
-            ->where('created_at', '<', Carbon::create($currentYear)->startOfYear())->count();
+            ->where('created_at', '<', $startDate)->count();
 
         $pctChange = fn($cur, $prev) => $prev > 0 ? round(($cur - $prev) / $prev * 100, 1) : ($cur > 0 ? 100 : 0);
 
-        // ── Penjualan Perbulan (3 years comparison) ──
-        $monthlySales = [];
-        $isSqlite = \Illuminate\Support\Facades\DB::connection()->getDriverName() === 'sqlite';
-        $monthSelect = $isSqlite ? 'CAST(strftime("%m", sale_date) AS INTEGER)' : 'MONTH(sale_date)';
+        // ── Sales Graph (Dynamic: Daily vs Monthly) ──
+        $salesGraph = [];
+        $isSqlite = DB::connection()->getDriverName() === 'sqlite';
         
-        foreach ([$currentYear - 2, $currentYear - 1, $currentYear] as $yr) {
+        if (in_array($period, ['today', '7days', 'this_month', 'last_month'])) {
+            // Daily Chart
+            $dateSelect = $isSqlite ? 'date(sale_date)' : 'DATE(sale_date)';
             $data = Sale::where('status', 'completed')
-                ->whereYear('sale_date', $yr)
+                ->whereBetween('sale_date', [$startDate, $endDate])
+                ->selectRaw("{$dateSelect} as date_str, SUM(total) as total")
+                ->groupBy('date_str')
+                ->pluck('total', 'date_str')
+                ->toArray();
+                
+            $currentDate = $startDate->copy();
+            while ($currentDate->lte($endDate)) {
+                $dateStr = $currentDate->format('Y-m-d');
+                $salesGraph[] = [
+                    'label' => clone $currentDate, 
+                    'total' => (float) ($data[$dateStr] ?? 0),
+                ];
+                $currentDate->addDay();
+            }
+            
+            // Format labels
+            foreach($salesGraph as &$item) {
+                 if ($period === 'today') {
+                     $item['label'] = 'Hari Ini';
+                 } else {
+                     $item['label'] = $item['label']->format('d M');
+                 }
+            }
+        } else {
+            // Monthly Chart
+            $monthSelect = $isSqlite ? 'CAST(strftime("%m", sale_date) AS INTEGER)' : 'MONTH(sale_date)';
+            $data = Sale::where('status', 'completed')
+                ->whereBetween('sale_date', [$startDate, $endDate])
                 ->selectRaw("{$monthSelect} as month, SUM(total) as total")
                 ->groupBy('month')
                 ->pluck('total', 'month')
                 ->toArray();
-            $monthlySales[$yr] = [];
+                
+            $months = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
             for ($m = 1; $m <= 12; $m++) {
-                $monthlySales[$yr][] = (float) ($data[$m] ?? 0);
+                $salesGraph[] = [
+                    'label' => $months[$m - 1],
+                    'total' => (float) ($data[$m] ?? 0),
+                ];
             }
-        }
-
-        // ── Penjualan Pertahun (last 3 years) ──
-        $yearlySales = [];
-        foreach ([$currentYear - 2, $currentYear - 1, $currentYear] as $yr) {
-            $yearlySales[] = [
-                'year' => $yr,
-                'total' => (float) Sale::where('status', 'completed')->whereYear('sale_date', $yr)->sum('total'),
-            ];
         }
 
         // ── Komposisi Barang (stock vs minimum) ──
@@ -135,9 +178,9 @@ class DashboardController extends Controller
             ])
             ->withQueryString();
 
-        // ── Penjualan Barang Terbesar (year) ──
+        // ── Penjualan Barang Terbesar ──
         $topSellingProducts = SaleDetail::with('product:id,name')
-            ->whereHas('sale', fn($q) => $q->where('status', 'completed')->whereYear('sale_date', $currentYear))
+            ->whereHas('sale', fn($q) => $q->where('status', 'completed')->whereBetween('sale_date', [$startDate, $endDate]))
             ->select('product_id',
                 DB::raw('SUM(quantity) as total_qty'),
                 DB::raw('SUM(subtotal) as total_sales')
@@ -147,11 +190,11 @@ class DashboardController extends Controller
             ->paginate(5, ['*'], 'topselling_page')
             ->withQueryString();
 
-        $grandTotalSales = Sale::where('status', 'completed')->whereYear('sale_date', $currentYear)->sum('total');
+        $grandTotalSales = Sale::where('status', 'completed')->whereBetween('sale_date', [$startDate, $endDate])->sum('total');
 
         // ── Paling Banyak Terjual - pie chart data ──
         $mostSoldPie = SaleDetail::with('product:id,name')
-            ->whereHas('sale', fn($q) => $q->where('status', 'completed')->whereYear('sale_date', $currentYear))
+            ->whereHas('sale', fn($q) => $q->where('status', 'completed')->whereBetween('sale_date', [$startDate, $endDate]))
             ->select('product_id', DB::raw('SUM(quantity) as total_qty'))
             ->groupBy('product_id')
             ->orderByDesc('total_qty')
@@ -164,10 +207,10 @@ class DashboardController extends Controller
             ->selectRaw('COALESCE(SUM(sd.quantity), 0) as total_qty')
             ->leftJoin('products as p', 'p.category_id', '=', 'categories.id')
             ->leftJoin('sale_details as sd', 'sd.product_id', '=', 'p.id')
-            ->leftJoin('sales as s', function ($join) use ($currentYear) {
+            ->leftJoin('sales as s', function ($join) use ($startDate, $endDate) {
                 $join->on('s.id', '=', 'sd.sale_id')
                     ->where('s.status', 'completed')
-                    ->whereYear('s.sale_date', $currentYear);
+                    ->whereBetween('s.sale_date', [$startDate, $endDate]);
             })
             ->groupBy('categories.id', 'categories.name')
             ->orderByDesc('total_qty')
@@ -180,10 +223,10 @@ class DashboardController extends Controller
             ->selectRaw('COALESCE(SUM(sd.subtotal), 0) as total_sales')
             ->leftJoin('products as p', 'p.category_id', '=', 'categories.id')
             ->leftJoin('sale_details as sd', 'sd.product_id', '=', 'p.id')
-            ->leftJoin('sales as s', function ($join) use ($currentYear) {
+            ->leftJoin('sales as s', function ($join) use ($startDate, $endDate) {
                 $join->on('s.id', '=', 'sd.sale_id')
                     ->where('s.status', 'completed')
-                    ->whereYear('s.sale_date', $currentYear);
+                    ->whereBetween('s.sale_date', [$startDate, $endDate]);
             })
             ->groupBy('categories.id', 'categories.name')
             ->orderByDesc('total_sales')
@@ -200,10 +243,10 @@ class DashboardController extends Controller
         // ── Pelanggan Terbesar ──
         $topCustomers = Customer::select('customers.id', 'customers.name')
             ->selectRaw('COALESCE(SUM(s.total), 0) as total_spend')
-            ->leftJoin('sales as s', function ($join) use ($currentYear) {
+            ->leftJoin('sales as s', function ($join) use ($startDate, $endDate) {
                 $join->on('s.customer_id', '=', 'customers.id')
                     ->where('s.status', 'completed')
-                    ->whereYear('s.sale_date', $currentYear);
+                    ->whereBetween('s.sale_date', [$startDate, $endDate]);
             })
             ->groupBy('customers.id', 'customers.name')
             ->orderByDesc('total_spend')
@@ -214,7 +257,7 @@ class DashboardController extends Controller
         // ── Penjualan Terbaru ──
         $recentSales = Sale::with('customer')
             ->where('status', 'completed')
-            ->whereYear('sale_date', $currentYear)
+            ->whereBetween('sale_date', [$startDate, $endDate])
             ->orderByDesc('sale_date')
             ->paginate(5, ['*'], 'recent_page')
             ->through(fn($s) => [
@@ -236,7 +279,6 @@ class DashboardController extends Controller
             ->whereRaw('COALESCE((SELECT SUM(quantity) FROM product_stocks WHERE product_stocks.product_id = products.id), 0) < stock_minimum')
             ->get(['id', 'name', 'code', 'stock_minimum', 'category_id'])
             ->map(function ($p) {
-                // Calculate actual stock
                 $actual = DB::table('product_stocks')->where('product_id', $p->id)->sum('quantity');
                 return [
                     'id' => $p->id,
@@ -266,16 +308,14 @@ class DashboardController extends Controller
             });
 
         return Inertia::render('Dashboard', [
-            'currentYear' => $currentYear,
-            'availableYears' => [$currentYear - 2, $currentYear - 1, $currentYear],
+            'period' => $period,
             'stats' => [
-                ['title' => 'Total Item Terjual', 'value' => $totalItemSold, 'change' => $pctChange($totalItemSold, $prevItemSold), 'year' => $currentYear],
-                ['title' => 'Total Transaksi', 'value' => $totalTransactions, 'change' => $pctChange($totalTransactions, $prevTransactions), 'year' => $currentYear],
-                ['title' => 'Total Income', 'value' => $totalIncome, 'change' => $pctChange($totalIncome, $prevIncome), 'year' => $currentYear, 'type' => 'currency'],
-                ['title' => 'Total Pelanggan Aktif', 'value' => $totalActiveCustomers, 'change' => $pctChange($totalActiveCustomers, $prevActiveCustomers), 'year' => $currentYear],
+                ['title' => 'Total Item Terjual', 'value' => $totalItemSold, 'change' => $pctChange($totalItemSold, $prevItemSold)],
+                ['title' => 'Total Transaksi', 'value' => $totalTransactions, 'change' => $pctChange($totalTransactions, $prevTransactions)],
+                ['title' => 'Total Pendapatan', 'value' => $totalIncome, 'change' => $pctChange($totalIncome, $prevIncome), 'type' => 'currency'],
+                ['title' => 'Total Pelanggan Aktif', 'value' => $totalActiveCustomers, 'change' => $pctChange($totalActiveCustomers, $prevActiveCustomers)],
             ],
-            'monthlySales' => $monthlySales,
-            'yearlySales' => $yearlySales,
+            'salesGraph' => $salesGraph,
             'stockComposition' => ['above' => $aboveMin, 'below' => $belowMin],
             'stockProducts' => $stockProducts,
             'categories' => $categories,

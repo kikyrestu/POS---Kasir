@@ -42,6 +42,11 @@ return [
             'driver' => 'session',
             'provider' => 'users',
         ],
+        
+        'saas_admin' => [
+            'driver' => 'session',
+            'provider' => 'saas_admins',
+        ],
     ],
 
     /*
@@ -65,6 +70,11 @@ return [
         'users' => [
             'driver' => 'eloquent',
             'model' => env('AUTH_MODEL', User::class),
+        ],
+
+        'saas_admins' => [
+            'driver' => 'eloquent',
+            'model' => App\Models\SaasAdmin::class,
         ],
 
         // 'users' => [

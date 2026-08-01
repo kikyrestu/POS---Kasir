@@ -9,6 +9,8 @@ use Inertia\Inertia;
 
 class UserManagementController extends Controller
 {
+    use \App\Traits\ChecksTenantLimits;
+
     public function index(Request $request)
     {
         $users = User::with('role')
@@ -31,6 +33,8 @@ class UserManagementController extends Controller
 
     public function store(Request $request)
     {
+        $this->authorizeLimit('max_users', User::count(), 'User Kasir/Staf');
+
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|email|unique:users,email',

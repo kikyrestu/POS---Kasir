@@ -16,7 +16,7 @@ class Product extends Model
     protected $fillable = [
         'category_id', 'barcode', 'code', 'name', 'description', 'unit',
         'cost_price', 'selling_price', 'stock_minimum', 'image',
-        'expiry_date', 'is_active',
+        'expiry_date', 'is_active', 'has_variants'
     ];
 
     protected $casts = [
@@ -24,11 +24,17 @@ class Product extends Model
         'selling_price' => 'decimal:2',
         'expiry_date' => 'date',
         'is_active' => 'boolean',
+        'has_variants' => 'boolean',
     ];
 
     public function category(): BelongsTo
     {
         return $this->belongsTo(Category::class);
+    }
+
+    public function variants(): HasMany
+    {
+        return $this->hasMany(ProductVariant::class);
     }
 
     public function prices(): HasMany
@@ -63,5 +69,10 @@ class Product extends Model
         } while (self::where('barcode', $barcode)->exists());
 
         return $barcode;
+    }
+
+    public function modifiers()
+    {
+        return $this->hasMany(ProductModifier::class);
     }
 }

@@ -55,18 +55,28 @@ class SaleController extends Controller
         $returnedQty = [];
         foreach ($sale->returns as $return) {
             foreach ($return->details as $rd) {
-                $key = $rd->product_id;
+                // Return detail logic ideally also needs product_variant_id, 
+                // but if it's just product_id, we'll try to map it best.
+                $key = $rd->product_id . '-' . ($rd->product_variant_id ?? '');
                 $returnedQty[$key] = ($returnedQty[$key] ?? 0) + $rd->quantity;
             }
         }
 
         foreach ($sale->details as $detail) {
-            $alreadyReturned = $returnedQty[$detail->product_id] ?? 0;
+            $key = $detail->product_id . '-' . ($detail->product_variant_id ?? '');
+            $alreadyReturned = $returnedQty[$key] ?? 0;
             $restoreQty = $detail->quantity - $alreadyReturned;
             if ($restoreQty > 0) {
-                $stock = \App\Models\ProductStock::where('product_id', $detail->product_id)
-                    ->where('warehouse_id', $sale->warehouse_id)
-                    ->first();
+                $stockQuery = \App\Models\ProductStock::where('product_id', $detail->product_id)
+                    ->where('warehouse_id', $sale->warehouse_id);
+                
+                if ($detail->product_variant_id) {
+                    $stockQuery->where('product_variant_id', $detail->product_variant_id);
+                } else {
+                    $stockQuery->whereNull('product_variant_id');
+                }
+                
+                $stock = $stockQuery->first();
                 if ($stock) {
                     $stock->increment('quantity', $restoreQty);
                 }

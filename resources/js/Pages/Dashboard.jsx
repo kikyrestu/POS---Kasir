@@ -45,12 +45,19 @@ function DonutChart({ data, size = 180, thickness = 40 }) {
     return <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>{arcs}</svg>;
 }
 
-// ─── Year Selector ───
-function YearSelect({ value, onChange, years }) {
+// ─── Period Selector ───
+function PeriodSelect({ value, onChange }) {
+    const periods = [
+        { id: 'today', label: 'Hari Ini' },
+        { id: '7days', label: '7 Hari Terakhir' },
+        { id: 'this_month', label: 'Bulan Ini' },
+        { id: 'last_month', label: 'Bulan Lalu' },
+        { id: 'this_year', label: 'Tahun Ini' }
+    ];
     return (
-        <select value={value} onChange={e => onChange(parseInt(e.target.value))}
+        <select value={value} onChange={e => onChange(e.target.value)}
             className="bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5 text-xs font-semibold text-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500/30">
-            {years.map(y => <option key={y} value={y}>{y}</option>)}
+            {periods.map(p => <option key={p.id} value={p.id}>{p.label}</option>)}
         </select>
     );
 }
@@ -71,25 +78,25 @@ function Section({ title, children, className = '', extra }) {
 }
 
 export default function Dashboard({
-    currentYear, availableYears, stats,
-    monthlySales, yearlySales, stockComposition, stockProducts, categories,
+    period, stats,
+    salesGraph, stockComposition, stockProducts, categories,
     topReceivables, overdueSales, overdueFilter,
     topSellingProducts, grandTotalSales, mostSoldPie,
     topCategories, topCategorySales,
     latestProducts, topCustomers, recentSales,
 }) {
-    const [year, setYear] = useState(currentYear);
+    const [activePeriod, setActivePeriod] = useState(period);
     const [stockSearch, setStockSearch] = useState('');
     const [stockCat, setStockCat] = useState('');
 
-    const changeYear = (y) => {
-        setYear(y);
-        router.get(route('dashboard'), { year: y }, { preserveState: true, preserveScroll: true });
+    const changePeriod = (p) => {
+        setActivePeriod(p);
+        router.get(route('dashboard'), { period: p }, { preserveState: true, preserveScroll: true });
     };
 
     const filterStock = (e) => {
         e?.preventDefault();
-        router.get(route('dashboard'), { year, stock_search: stockSearch || undefined, stock_category: stockCat || undefined },
+        router.get(route('dashboard'), { period: activePeriod, stock_search: stockSearch || undefined, stock_category: stockCat || undefined },
             { preserveState: true, preserveScroll: true });
     };
 
@@ -103,7 +110,7 @@ export default function Dashboard({
                     <h2 className="text-2xl font-bold text-slate-900">Dashboard</h2>
                     <p className="text-sm text-slate-500 mt-1">Ringkasan data & statistik bisnis</p>
                 </div>
-                <YearSelect value={year} onChange={changeYear} years={availableYears || []} />
+                <PeriodSelect value={activePeriod} onChange={changePeriod} />
             </div>
 
             {/* ═══ STAT CARDS ═══ */}
@@ -124,28 +131,20 @@ export default function Dashboard({
                                     {isPositive ? <ArrowUpRight className="w-3 h-3" /> : <ArrowDownRight className="w-3 h-3" />}
                                     {isPositive ? '+' : ''}{stat.change}%
                                 </span>
-                                <span className="text-white/60 font-semibold">{stat.year}</span>
                             </div>
                         </div>
                     );
                 })}
             </div>
 
-            {/* ═══ ROW: Monthly Sales + Yearly Sales ═══ */}
-            <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-                {/* Penjualan Perbulan */}
-                <Section title="Penjualan Perbulan" className="xl:col-span-2"
-                    extra={<div className="flex gap-2">{(availableYears || []).map((yr,i) => (
-                        <span key={yr} className="flex items-center gap-1 text-xs font-semibold">
-                            <span className="w-3 h-3 rounded-sm" style={{backgroundColor: LINE_COLORS[i]}} />
-                            {yr}
-                        </span>
-                    ))}</div>}>
+            {/* ═══ ROW: Tren Penjualan (Dynamic Line Chart) ═══ */}
+            <div className="grid grid-cols-1 gap-6">
+                <Section title="Tren Penjualan">
                     <div className="p-5">
-                        <div className="relative h-[260px] w-full">
+                        <div className="relative h-[300px] w-full mt-2">
                             {(() => {
-                                const allVals = Object.values(monthlySales || {}).flat();
-                                const maxVal = Math.max(...allVals, 1);
+                                const vals = (salesGraph || []).map(d => d.total);
+                                const maxVal = Math.max(...vals, 1);
                                 return [maxVal, maxVal * 0.66, maxVal * 0.33, 0].map((v, i) => (
                                     <span key={i} className="absolute left-0 text-[10px] font-medium text-slate-400"
                                         style={{ top: `${(i / 3) * 85}%`, transform: 'translateY(-50%)' }}>
@@ -153,44 +152,57 @@ export default function Dashboard({
                                     </span>
                                 ));
                             })()}
+                            
                             <div className="absolute left-16 right-0 top-0" style={{height:'85%'}}>
                                 {[...Array(4)].map((_, i) => (
                                     <div key={i} className="absolute w-full h-[1px] bg-slate-100" style={{top: `${(i/3)*100}%`}} />
                                 ))}
                             </div>
+                            
                             <svg className="absolute left-16 right-0 top-0 overflow-visible" style={{height:'85%'}} viewBox="0 0 1100 100" preserveAspectRatio="none">
-                                {Object.entries(monthlySales || {}).map(([yr, vals], lineIdx) => {
-                                    const allVals = Object.values(monthlySales || {}).flat();
-                                    const maxVal = Math.max(...allVals, 1);
-                                    const pts = vals.map((v, i) => `${(i / 11) * 1100},${100 - (v / maxVal) * 90}`).join(' ');
-                                    return <polyline key={yr} points={pts} fill="none" stroke={LINE_COLORS[lineIdx]} strokeWidth="2" vectorEffect="non-scaling-stroke" opacity="0.8" />;
-                                })}
+                                {(() => {
+                                    const vals = (salesGraph || []).map(d => d.total);
+                                    if (vals.length === 0) return null;
+                                    const maxVal = Math.max(...vals, 1);
+                                    const step = vals.length > 1 ? 1100 / (vals.length - 1) : 1100;
+                                    const pts = vals.map((v, i) => `${i * step},${100 - (v / maxVal) * 90}`).join(' ');
+                                    return (
+                                        <>
+                                            <polyline points={`0,100 ${pts} 1100,100`} fill="url(#gradientSales)" opacity="0.3" />
+                                            <polyline points={pts} fill="none" stroke="#3b82f6" strokeWidth="2.5" vectorEffect="non-scaling-stroke" strokeLinecap="round" strokeLinejoin="round" />
+                                            {vals.map((v, i) => (
+                                                <circle key={i} cx={i * step} cy={100 - (v / maxVal) * 90} r="4" fill="#ffffff" stroke="#3b82f6" strokeWidth="2" vectorEffect="non-scaling-stroke" />
+                                            ))}
+                                            <defs>
+                                                <linearGradient id="gradientSales" x1="0" y1="0" x2="0" y2="1">
+                                                    <stop offset="0%" stopColor="#3b82f6" stopOpacity="1" />
+                                                    <stop offset="100%" stopColor="#3b82f6" stopOpacity="0" />
+                                                </linearGradient>
+                                            </defs>
+                                        </>
+                                    );
+                                })()}
                             </svg>
+                            
                             <div className="absolute left-16 right-0 bottom-0 flex justify-between text-[10px] font-medium text-slate-400">
-                                {MONTHS.map(m => <span key={m}>{m}</span>)}
+                                {(() => {
+                                    const labels = (salesGraph || []).map(d => d.label);
+                                    if (labels.length === 0) return null;
+                                    
+                                    // If labels are too many (e.g. 30 days), only show some of them to prevent overlap
+                                    const skip = labels.length > 15 ? Math.ceil(labels.length / 10) : 1;
+                                    
+                                    return labels.map((l, i) => {
+                                        const show = (i % skip === 0) || i === labels.length - 1 || i === 0;
+                                        return (
+                                            <span key={i} style={{ opacity: show ? 1 : 0, transition: 'opacity 0.2s', width: 0, textAlign: 'center' }}>
+                                                {l}
+                                            </span>
+                                        );
+                                    });
+                                })()}
                             </div>
                         </div>
-                    </div>
-                </Section>
-
-                {/* Penjualan Pertahun */}
-                <Section title="Penjualan Pertahun">
-                    <div className="p-5 flex items-end gap-4 h-[260px]">
-                        {(() => {
-                            const maxVal = Math.max(...(yearlySales || []).map(y => y.total), 1);
-                            return (yearlySales || []).map((yr, i) => (
-                                <div key={yr.year} className="flex-1 flex flex-col items-center gap-2">
-                                    <span className="text-[10px] font-bold text-slate-500">{formatCurrency(yr.total)}</span>
-                                    <div className="w-full rounded-t-lg transition-all"
-                                        style={{
-                                            height: `${Math.max((yr.total / maxVal) * 180, 8)}px`,
-                                            backgroundColor: PIE_COLORS[i],
-                                            opacity: 0.85,
-                                        }} />
-                                    <span className="text-xs font-bold text-slate-600">{yr.year}</span>
-                                </div>
-                            ));
-                        })()}
                     </div>
                 </Section>
             </div>
@@ -321,7 +333,7 @@ export default function Dashboard({
             {/* ═══ ROW: Penjualan Barang Terbesar + Paling Banyak Terjual ═══ */}
             <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
                 <Section title="Penjualan Barang Terbesar" className="xl:col-span-2"
-                    extra={<YearSelect value={year} onChange={changeYear} years={availableYears || []} />}>
+                    extra={<PeriodSelect value={activePeriod} onChange={changePeriod} />}>
                     <div className="overflow-x-auto">
                         <table className="w-full text-sm text-left">
                             <thead>
@@ -357,7 +369,7 @@ export default function Dashboard({
                 </Section>
 
                 <Section title="Paling Banyak Terjual"
-                    extra={<YearSelect value={year} onChange={changeYear} years={availableYears || []} />}>
+                    extra={<PeriodSelect value={activePeriod} onChange={changePeriod} />}>
                     <div className="p-5 flex flex-col items-center">
                         <DonutChart data={mostSoldPie || []} size={160} thickness={35} />
                         <div className="mt-4 space-y-1.5 w-full">
@@ -375,7 +387,7 @@ export default function Dashboard({
             {/* ═══ ROW: Kategori Terlaris + Penjualan Terbesar per Kategori + Item Terbaru ═══ */}
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
                 <Section title="Kategori Terlaris"
-                    extra={<YearSelect value={year} onChange={changeYear} years={availableYears || []} />}>
+                    extra={<PeriodSelect value={activePeriod} onChange={changePeriod} />}>
                     <div className="p-5 flex flex-col items-center">
                         <DonutChart data={topCategories || []} size={150} thickness={30} />
                         <div className="mt-4 space-y-1.5 w-full">
@@ -390,7 +402,7 @@ export default function Dashboard({
                 </Section>
 
                 <Section title="Penjualan Terbesar"
-                    extra={<YearSelect value={year} onChange={changeYear} years={availableYears || []} />}>
+                    extra={<PeriodSelect value={activePeriod} onChange={changePeriod} />}>
                     <div className="p-5 space-y-3">
                         {(topCategorySales || []).map((c, i) => (
                             <div key={i} className="flex items-center justify-between">
@@ -431,7 +443,7 @@ export default function Dashboard({
             {/* ═══ ROW: Pelanggan Terbesar + Penjualan Terbaru ═══ */}
             <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
                 <Section title="Pelanggan Terbesar"
-                    extra={<YearSelect value={year} onChange={changeYear} years={availableYears || []} />}>
+                    extra={<PeriodSelect value={activePeriod} onChange={changePeriod} />}>
                     <div className="p-5 space-y-3">
                         {(topCustomers || []).map((c, i) => (
                             <div key={i} className="flex items-center justify-between">
@@ -451,7 +463,7 @@ export default function Dashboard({
                 </Section>
 
                 <Section title="Penjualan Terbaru" className="xl:col-span-2"
-                    extra={<YearSelect value={year} onChange={changeYear} years={availableYears || []} />}>
+                    extra={<PeriodSelect value={activePeriod} onChange={changePeriod} />}>
                     <div className="overflow-x-auto">
                         <table className="w-full text-sm text-left">
                             <thead>

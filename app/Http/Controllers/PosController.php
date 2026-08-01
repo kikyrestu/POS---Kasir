@@ -25,9 +25,13 @@ class PosController extends Controller
             'customers' => Customer::where('is_active', true)->get(['id', 'name', 'type']),
             'categories' => \App\Models\Category::where('is_active', true)->get(['id', 'name', 'icon']),
             'warehouses' => Warehouse::where('is_active', true)->get(['id', 'name']),
+            'tables' => \App\Models\Table::where('status', 'available')->get(['id', 'name']),
             'defaultWarehouseId' => $defaultWarehouse?->id,
             'invoiceNumber' => Sale::generateInvoiceNumber(),
             'initialActiveShift' => $request->user()->shifts()->where('status', 'open')->first(),
+            'globalTaxValue' => Setting::get('global_tax_value', 0),
+            'globalTaxFormat' => Setting::get('tax_format', 'percent'),
+            'paymentMethods' => \App\Models\PaymentMethod::where('is_active', true)->get(['id', 'name', 'code', 'is_gateway']),
         ]);
     }
 
@@ -35,18 +39,24 @@ class PosController extends Controller
     {
         $validated = $request->validate([
             'customer_id' => 'nullable|exists:customers,id',
+            'voucher_id' => 'nullable|exists:vouchers,id',
             'warehouse_id' => 'required|exists:warehouses,id',
-            'payment_type' => 'required|in:cash,transfer,qris,ewallet,tempo',
+            'payment_type' => 'required|string',
             'paid' => 'required|numeric|min:0',
             'discount_amount' => 'numeric|min:0',
             'discount_percent' => 'numeric|min:0|max:100',
             'tax' => 'numeric|min:0',
             'notes' => 'nullable|string',
+            'order_type' => 'required|in:dine_in,takeaway,delivery',
+            'table_id' => 'nullable|exists:tables,id',
             'items' => 'required|array|min:1',
             'items.*.product_id' => 'required|exists:products,id',
+            'items.*.product_variant_id' => 'nullable|exists:product_variants,id',
             'items.*.quantity' => 'required|integer|min:1',
             'items.*.unit_price' => 'required|numeric|min:0',
             'items.*.discount' => 'numeric|min:0',
+            'items.*.modifiers' => 'nullable|array',
+            'items.*.notes' => 'nullable|string',
         ]);
 
         return DB::transaction(function () use ($validated, $request) {
@@ -58,13 +68,22 @@ class PosController extends Controller
                 $product = Product::findOrFail($item['product_id']);
 
                 // Check stock sufficiency
-                $stock = ProductStock::where('product_id', $item['product_id'])
-                    ->where('warehouse_id', $validated['warehouse_id'])
-                    ->first();
+                $variantId = $item['product_variant_id'] ?? null;
+                $stockQuery = ProductStock::where('product_id', $item['product_id'])
+                    ->where('warehouse_id', $validated['warehouse_id']);
+                
+                if ($variantId) {
+                    $stockQuery->where('product_variant_id', $variantId);
+                } else {
+                    $stockQuery->whereNull('product_variant_id');
+                }
+                
+                $stock = $stockQuery->first();
                 $available = $stock ? $stock->quantity : 0;
                 if ($available < $item['quantity']) {
+                    $variantName = $variantId ? " (Varian)" : "";
                     throw \Illuminate\Validation\ValidationException::withMessages([
-                        'items' => "Stok {$product->name} tidak cukup (tersedia: {$available}, diminta: {$item['quantity']}).",
+                        'items' => "Stok {$product->name}{$variantName} tidak cukup (tersedia: {$available}, diminta: {$item['quantity']}).",
                     ]);
                 }
 
@@ -77,17 +96,24 @@ class PosController extends Controller
 
                 $items[] = [
                     'product_id' => $item['product_id'],
+                    'product_variant_id' => $variantId,
                     'quantity' => $item['quantity'],
                     'unit_price' => $item['unit_price'],
                     'cost_price' => $product->cost_price,
                     'discount' => $discount,
                     'subtotal' => $itemSubtotal,
                     'profit' => $itemProfit,
+                    'modifiers' => $item['modifiers'] ?? null,
+                    'notes' => $item['notes'] ?? null,
                 ];
 
                 // Decrease stock
                 $stock = ProductStock::firstOrCreate(
-                    ['product_id' => $item['product_id'], 'warehouse_id' => $validated['warehouse_id']],
+                    [
+                        'product_id' => $item['product_id'],
+                        'product_variant_id' => $variantId,
+                        'warehouse_id' => $validated['warehouse_id']
+                    ],
                     ['quantity' => 0]
                 );
                 $stock->decrement('quantity', $item['quantity']);
@@ -114,6 +140,7 @@ class PosController extends Controller
             $sale = Sale::create([
                 'invoice_number' => Sale::generateInvoiceNumber(),
                 'customer_id' => $validated['customer_id'],
+                'voucher_id' => $validated['voucher_id'] ?? null,
                 'warehouse_id' => $validated['warehouse_id'],
                 'user_id' => $request->user()->id,
                 'shift_id' => $shift ? $shift->id : null,
@@ -131,10 +158,24 @@ class PosController extends Controller
                 'payment_status' => $paymentStatus,
                 'status' => 'completed',
                 'notes' => $validated['notes'],
+                'order_type' => $validated['order_type'],
+                'table_id' => $validated['table_id'] ?? null,
             ]);
+
+            // Update Table status if Dine In
+            if ($validated['order_type'] === 'dine_in' && !empty($validated['table_id'])) {
+                \App\Models\Table::where('id', $validated['table_id'])->update(['status' => 'occupied']);
+            }
 
             foreach ($items as $item) {
                 $sale->details()->create($item);
+            }
+
+            if (!empty($validated['voucher_id'])) {
+                $voucher = \App\Models\Voucher::find($validated['voucher_id']);
+                if ($voucher) {
+                    $voucher->increment('used_count');
+                }
             }
 
             if ($paid > 0) {

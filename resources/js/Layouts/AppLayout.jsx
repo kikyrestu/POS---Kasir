@@ -27,63 +27,72 @@ import {
     Barcode,
     Clock,
     Shield,
+    ChefHat,
+    Maximize,
+    Minimize,
+    Check,
+    Store,
 } from 'lucide-react';
+import axios from 'axios';
 
 const NAV_ITEMS = [
     { icon: LayoutDashboard, label: 'Dashboard', route: 'dashboard', permission: 'dashboard' },
-    { icon: ShoppingBag, label: 'POS Kasir', route: 'pos.index', permission: 'pos' },
+    { icon: ShoppingBag, label: 'POS Kasir', route: 'pos.index', permission: 'pos', feature: 'pos' },
+    { icon: ChefHat, label: 'Dapur (KDS)', route: 'kds.index', permission: 'pos' },
     {
         icon: Package, label: 'Produk', children: [
-            { label: 'Daftar Produk', route: 'products.index', permission: 'products.view' },
-            { label: 'Kategori', route: 'categories.index', permission: 'categories.manage' },
-            { label: 'Cetak Barcode', route: 'barcodes.index', permission: 'barcodes.print' },
+            { label: 'Daftar Produk', route: 'products.index', permission: 'products.view', feature: 'inventory' },
+            { label: 'Kategori', route: 'categories.index', permission: 'categories.manage', feature: 'inventory' },
+            { label: 'Cetak Barcode', route: 'barcodes.index', permission: 'barcodes.print', feature: 'barcodes' },
+            { label: 'Penyesuaian Stok', route: 'stock-opnames.index', permission: 'warehouses.manage', feature: 'stock-opnames' },
+            { label: 'Riwayat Mutasi', route: 'stock-movements.index', permission: 'warehouses.manage', feature: 'stock-opnames' },
         ]
     },
     {
-        icon: Warehouse, label: 'Gudang', children: [
-            { label: 'Daftar Gudang', route: 'warehouses.index', permission: 'warehouses.manage' },
-            { label: 'Transfer Barang', route: 'stock-transfers.index', permission: 'stock-transfers.manage' },
-            { label: 'Penyesuaian Stok', route: 'stock-opnames.index', permission: 'warehouses.manage' },
-            { label: 'Riwayat Mutasi', route: 'stock-movements.index', permission: 'warehouses.manage' },
+        icon: Warehouse, label: 'Gudang', feature: 'warehouses', children: [
+            { label: 'Daftar Gudang', route: 'warehouses.index', permission: 'warehouses.manage', feature: 'warehouses' },
+            { label: 'Transfer Barang', route: 'stock-transfers.index', permission: 'stock-transfers.manage', feature: 'warehouses' },
         ]
     },
-    { icon: TruckIcon, label: 'Supplier', route: 'suppliers.index', permission: 'suppliers.manage' },
+    { icon: TruckIcon, label: 'Supplier', route: 'suppliers.index', permission: 'suppliers.manage', feature: 'suppliers' },
     {
         icon: CreditCard, label: 'Penjualan', children: [
             { label: 'Daftar Penjualan', route: 'sales.index', permission: 'sales.view' },
-            { label: 'Penjualan Tempo', route: 'sales-tempo.index', permission: 'sales-tempo.view' },
-            { label: 'Retur Penjualan', route: 'sale-returns.index', permission: 'sale-returns.manage' },
+            { label: 'Penjualan Tempo', route: 'sales-tempo.index', permission: 'sales-tempo.view', feature: 'sales-tempo' },
+            { label: 'Retur Penjualan', route: 'sale-returns.index', permission: 'sale-returns.manage', feature: 'sale-returns' },
         ]
     },
     {
         icon: ShoppingBag, label: 'Pembelian', children: [
-            { label: 'Daftar Pembelian', route: 'purchases.index', permission: 'purchases.view' },
-            { label: 'Retur Pembelian', route: 'purchase-returns.index', permission: 'purchase-returns.manage' },
+            { label: 'Daftar Pembelian', route: 'purchases.index', permission: 'purchases.view', feature: 'purchases' },
+            { label: 'Retur Pembelian', route: 'purchase-returns.index', permission: 'purchase-returns.manage', feature: 'purchase-returns' },
         ]
     },
-    { icon: Wallet, label: 'Biaya & Kasbon', route: 'expenses.index', permission: 'sales.view' },
-    { icon: Users, label: 'Pelanggan', route: 'customers.index', permission: 'customers.manage' },
+    { icon: Wallet, label: 'Biaya & Kasbon', route: 'expenses.index', permission: 'sales.view', feature: 'expenses' },
+    { icon: Users, label: 'Pelanggan', route: 'customers.index', permission: 'customers.manage', feature: 'customers' },
+    { icon: Tags, label: 'Voucher & Promo', route: 'vouchers.index', permission: 'settings.manage', feature: 'vouchers' },
     {
         icon: BarChart3, label: 'Laporan', children: [
-            { label: 'Penjualan Per Invoice', route: 'reports.sales-by-invoice', permission: 'reports.view' },
-            { label: 'Penjualan Per Item', route: 'reports.sales-by-item', permission: 'reports.view' },
-            { label: 'Pembelian Per Invoice', route: 'reports.purchases-by-invoice', permission: 'reports.view' },
-            { label: 'Laba / Rugi (P&L)', route: 'reports.profit-loss', permission: 'reports.view' },
-            { label: 'Aging Piutang', route: 'reports.receivables', permission: 'reports.view' },
+            { label: 'Penjualan Per Invoice', route: 'reports.sales-by-invoice', permission: 'reports.view', feature: 'reports' },
+            { label: 'Penjualan Per Item', route: 'reports.sales-by-item', permission: 'reports.view', feature: 'reports' },
+            { label: 'Pembelian Per Invoice', route: 'reports.purchases-by-invoice', permission: 'reports.view', feature: 'reports' },
+            { label: 'Laba / Rugi (P&L)', route: 'reports.profit-loss', permission: 'reports.view', feature: 'reports' },
+            { label: 'Aging Piutang', route: 'reports.receivables', permission: 'reports.view', feature: 'reports' },
         ]
     },
     {
         icon: Settings, label: 'Setting', children: [
-            { label: 'Pengaturan', route: 'settings.index', permission: 'settings.manage' },
-            { label: 'User', route: 'users.index', permission: 'users.manage' },
-            { label: 'Role & Permission', route: 'roles.index', permission: 'roles.manage' },
-            { label: 'Log Aktivitas Sistem', route: 'activity-logs.index', permission: 'settings.manage' },
+            { label: 'Pengaturan', route: 'settings.index', permission: 'settings.manage', feature: 'settings' },
+            { label: 'User', route: 'users.index', permission: 'users.manage', feature: 'user-management' },
+            { label: 'Role & Permission', route: 'roles.index', permission: 'roles.manage', feature: 'user-management' },
+            { label: 'Billing & Paket', route: 'billing.index', permission: 'settings.manage', feature: 'settings' },
+            { label: 'Log Aktivitas Sistem', route: 'activity-logs.index', permission: 'settings.manage', feature: 'settings' },
         ]
     },
 ];
 
 export default function AppLayout({ children, title }) {
-    const { auth, flash } = usePage().props;
+    const { auth, flash, saas_features, global_settings } = usePage().props;
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const [expandedMenu, setExpandedMenu] = useState(null);
 
@@ -93,17 +102,27 @@ export default function AppLayout({ children, title }) {
         return auth.user?.permissions?.includes(permission);
     };
 
+    const isFeatureEnabled = (featureKey) => {
+        if (!featureKey) return true;
+        // if feature is missing from props, assume it's disabled or enabled? usually enabled by default if not strictly managed, but let's say disabled if not found.
+        // Actually, 'active' means enabled.
+        return saas_features?.[featureKey] === 'active';
+    };
+
     const filteredNavItems = NAV_ITEMS.filter(item => {
+        if (item.route === 'kds.index') {
+            return global_settings?.enable_kds === '1' && hasPermission(item.permission);
+        }
         if (item.children) {
-            const visibleChildren = item.children.filter(child => hasPermission(child.permission));
+            const visibleChildren = item.children.filter(child => hasPermission(child.permission) && isFeatureEnabled(child.feature));
             return visibleChildren.length > 0;
         }
-        return hasPermission(item.permission);
+        return hasPermission(item.permission) && isFeatureEnabled(item.feature);
     }).map(item => {
         if (item.children) {
             return {
                 ...item,
-                children: item.children.filter(child => hasPermission(child.permission))
+                children: item.children.filter(child => hasPermission(child.permission) && isFeatureEnabled(child.feature))
             };
         }
         return item;
@@ -122,6 +141,67 @@ export default function AppLayout({ children, title }) {
         if (flash?.error) toast.error(flash.error);
     }, [flash]);
 
+    // --- Fullscreen Logic ---
+    const [isFullscreen, setIsFullscreen] = useState(false);
+    
+    useEffect(() => {
+        const onFullscreenChange = () => {
+            setIsFullscreen(!!document.fullscreenElement);
+        };
+        document.addEventListener('fullscreenchange', onFullscreenChange);
+        return () => document.removeEventListener('fullscreenchange', onFullscreenChange);
+    }, []);
+
+    const toggleFullscreen = () => {
+        if (!document.fullscreenElement) {
+            document.documentElement.requestFullscreen().catch(err => {
+                toast.error(`Error attempting to enable fullscreen: ${err.message}`);
+            });
+        } else {
+            if (document.exitFullscreen) {
+                document.exitFullscreen();
+            }
+        }
+    };
+
+    // --- Notification Logic ---
+    const [notifications, setNotifications] = useState([]);
+    const [showNotifications, setShowNotifications] = useState(false);
+
+    const fetchNotifications = async () => {
+        try {
+            const res = await axios.get(route('notifications.index'));
+            setNotifications(res.data);
+        } catch (error) {
+            console.error('Failed to fetch notifications', error);
+        }
+    };
+
+    useEffect(() => {
+        fetchNotifications();
+        // Optional: Polling every 60s
+        const interval = setInterval(fetchNotifications, 60000);
+        return () => clearInterval(interval);
+    }, []);
+
+    const markAsRead = async (id) => {
+        try {
+            await axios.post(route('notifications.markAsRead', id));
+            setNotifications(notifications.filter(n => n.id !== id));
+        } catch (error) {
+            console.error('Failed to mark as read', error);
+        }
+    };
+
+    const markAllAsRead = async () => {
+        try {
+            await axios.post(route('notifications.markAllAsRead'));
+            setNotifications([]);
+        } catch (error) {
+            console.error('Failed to mark all as read', error);
+        }
+    };
+
     return (
         <div
             className="min-h-screen text-slate-800 font-sans overflow-hidden flex relative selection:bg-blue-500/20"
@@ -135,11 +215,20 @@ export default function AppLayout({ children, title }) {
         >
 
             {/* Desktop Sidebar */}
-            <aside className="hidden lg:flex static inset-y-0 left-0 z-40 w-64 border-r border-slate-200/60 bg-white/80 backdrop-blur-xl flex-col justify-between py-6 shadow-[4px_0_24px_rgba(0,0,0,0.02)]">
+            <aside className="hidden lg:flex print:hidden static inset-y-0 left-0 z-40 w-64 border-r border-slate-200/60 bg-white/80 backdrop-blur-xl flex-col justify-between py-6 shadow-[4px_0_24px_rgba(0,0,0,0.02)]">
                 <div>
                     {/* Logo */}
                     <div className="px-6 mb-10 flex items-center">
-                        <img src="/images/logo.png" alt="BuildyPOS Logo" className="h-8 w-auto object-contain" />
+                        {global_settings?.store_logo ? (
+                            <img src={`/storage/${global_settings.store_logo}`} alt={global_settings?.store_name || "Logo"} className="h-8 w-auto object-contain" />
+                        ) : (
+                            <div className="flex items-center gap-2">
+                                <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center shrink-0">
+                                    <Store className="w-5 h-5 text-white" />
+                                </div>
+                                <span className="font-bold text-slate-800 text-lg tracking-tight truncate">{global_settings?.store_name || 'BuildyPOS'}</span>
+                            </div>
+                        )}
                     </div>
 
                     {/* Navigation */}
@@ -189,9 +278,9 @@ export default function AppLayout({ children, title }) {
             </aside>
 
             {/* Main Content */}
-            <main className="flex-1 flex flex-col h-screen overflow-y-auto z-10 custom-scrollbar pb-20 lg:pb-0">
+            <main className="flex-1 flex flex-col h-screen overflow-y-auto z-10 custom-scrollbar pb-20 lg:pb-0 print:h-auto print:overflow-visible">
                 {/* Header */}
-                <header className="min-h-[72px] lg:min-h-[88px] py-3 lg:py-4 bg-white flex items-center justify-between px-4 lg:px-8 sticky top-0 z-20 shadow-[0_1px_3px_rgba(0,0,0,0.08),0_1px_2px_rgba(0,0,0,0.04)]">
+                <header className="min-h-[72px] lg:min-h-[88px] py-3 lg:py-4 bg-white flex items-center justify-between px-4 lg:px-8 sticky top-0 z-20 shadow-[0_1px_3px_rgba(0,0,0,0.08),0_1px_2px_rgba(0,0,0,0.04)] print:hidden">
                     <div className="flex items-center gap-4">
                         <button onClick={() => setSidebarOpen(!sidebarOpen)} className="hidden p-2 text-slate-500 hover:text-slate-900 rounded-xl hover:bg-slate-100/80 transition-colors">
                             {sidebarOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
@@ -215,11 +304,75 @@ export default function AppLayout({ children, title }) {
                             />
                         </div>
 
-                        {/* Notifications */}
-                        <button className="relative w-10 h-10 flex items-center justify-center text-slate-500 hover:text-slate-800 transition-all rounded-xl hover:bg-slate-100/80 group">
-                            <Bell className="w-5 h-5 group-hover:scale-110 transition-transform" />
-                            <span className="absolute top-1.5 right-1.5 w-2.5 h-2.5 bg-rose-500 rounded-full ring-2 ring-white"></span>
+                        {/* Fullscreen Toggle */}
+                        <button 
+                            onClick={toggleFullscreen} 
+                            className="hidden lg:flex relative w-10 h-10 items-center justify-center text-slate-500 hover:text-slate-800 transition-all rounded-xl hover:bg-slate-100/80 group"
+                            title="Toggle Fullscreen"
+                        >
+                            {isFullscreen ? (
+                                <Minimize className="w-5 h-5 group-hover:scale-110 transition-transform" />
+                            ) : (
+                                <Maximize className="w-5 h-5 group-hover:scale-110 transition-transform" />
+                            )}
                         </button>
+
+                        {/* Notifications */}
+                        <div className="relative">
+                            <button 
+                                onClick={() => setShowNotifications(!showNotifications)}
+                                className="relative w-10 h-10 flex items-center justify-center text-slate-500 hover:text-slate-800 transition-all rounded-xl hover:bg-slate-100/80 group"
+                            >
+                                <Bell className="w-5 h-5 group-hover:scale-110 transition-transform" />
+                                {notifications.length > 0 && (
+                                    <span className="absolute top-1.5 right-1.5 w-2.5 h-2.5 bg-rose-500 rounded-full ring-2 ring-white"></span>
+                                )}
+                            </button>
+
+                            {/* Notification Dropdown */}
+                            {showNotifications && (
+                                <>
+                                    <div className="fixed inset-0 z-40" onClick={() => setShowNotifications(false)}></div>
+                                    <div className="absolute right-0 mt-2 w-80 bg-white rounded-2xl shadow-xl border border-slate-100 overflow-hidden z-50">
+                                        <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+                                            <h3 className="font-semibold text-slate-800">Notifikasi</h3>
+                                            {notifications.length > 0 && (
+                                                <button onClick={markAllAsRead} className="text-xs font-medium text-blue-600 hover:text-blue-700">Tandai Semua Dibaca</button>
+                                            )}
+                                        </div>
+                                        <div className="max-h-80 overflow-y-auto custom-scrollbar">
+                                            {notifications.length === 0 ? (
+                                                <div className="p-8 text-center text-slate-400">
+                                                    <Bell className="w-8 h-8 mx-auto mb-3 opacity-20" />
+                                                    <p className="text-sm">Belum ada notifikasi baru</p>
+                                                </div>
+                                            ) : (
+                                                <div className="divide-y divide-slate-100">
+                                                    {notifications.map((notif) => (
+                                                        <div key={notif.id} className="p-4 hover:bg-slate-50 transition-colors flex gap-3 relative group">
+                                                            <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-sm shrink-0">
+                                                                {notif.data.icon || '🔔'}
+                                                            </div>
+                                                            <div className="flex-1 min-w-0">
+                                                                <p className="text-sm font-semibold text-slate-800 truncate">{notif.data.title}</p>
+                                                                <p className="text-xs text-slate-500 mt-0.5 line-clamp-2 leading-relaxed">{notif.data.message}</p>
+                                                            </div>
+                                                            <button 
+                                                                onClick={() => markAsRead(notif.id)}
+                                                                className="absolute right-2 top-1/2 -translate-y-1/2 p-2 text-slate-400 hover:text-blue-600 opacity-0 group-hover:opacity-100 transition-all bg-white rounded-full shadow-sm border border-slate-100"
+                                                                title="Tandai dibaca"
+                                                            >
+                                                                <Check className="w-3.5 h-3.5" />
+                                                            </button>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                </>
+                            )}
+                        </div>
 
                         {/* Divider */}
                         <div className="hidden lg:block w-px h-10 bg-slate-200/80 mx-1"></div>
@@ -258,17 +411,17 @@ export default function AppLayout({ children, title }) {
                 <Toaster richColors position="top-right" />
 
                 {/* Page Content */}
-                <div className="p-4 lg:p-8 space-y-6 lg:space-y-8 flex-1">
+                <div className="p-4 lg:p-8 space-y-6 lg:space-y-8 flex-1 print:p-0 print:space-y-0 print:block">
                     {children}
                 </div>
             </main>
 
             {/* Bottom Navigation (Mobile Only) */}
-            <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 flex items-center justify-around z-40 pb-safe shadow-[0_-4px_24px_rgba(0,0,0,0.04)] h-16 px-2">
+            <div className="lg:hidden print:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 flex items-center justify-around z-40 pb-safe shadow-[0_-4px_24px_rgba(0,0,0,0.04)] h-16 px-2">
                 {hasPermission('dashboard') && (
                     <BottomNavItem icon={LayoutDashboard} label="Dashboard" href={route('dashboard')} isActive={route().current('dashboard')} />
                 )}
-                {hasPermission('pos') && (
+                {hasPermission('pos') && isFeatureEnabled('pos') && (
                     <BottomNavItem icon={ShoppingBag} label="POS" href={route('pos.index')} isActive={route().current('pos.index')} />
                 )}
                 {hasPermission('sales.view') && (
@@ -296,7 +449,16 @@ export default function AppLayout({ children, title }) {
                     
                     <div className="overflow-y-auto custom-scrollbar p-5 pt-2 pb-8">
                         <div className="mb-6 flex items-center justify-center">
-                            <img src="/images/logo.png" alt="BuildyPOS Logo" className="h-8 w-auto object-contain" />
+                            {global_settings?.store_logo ? (
+                                <img src={`/storage/${global_settings.store_logo}`} alt={global_settings?.store_name || "Logo"} className="h-8 w-auto object-contain" />
+                            ) : (
+                                <div className="flex items-center gap-2">
+                                    <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center shrink-0">
+                                        <Store className="w-5 h-5 text-white" />
+                                    </div>
+                                    <span className="font-bold text-slate-800 text-lg tracking-tight truncate">{global_settings?.store_name || 'BuildyPOS'}</span>
+                                </div>
+                            )}
                         </div>
 
                         <div className="flex flex-col gap-6">

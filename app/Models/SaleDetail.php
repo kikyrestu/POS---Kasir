@@ -8,11 +8,13 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class SaleDetail extends Model
 {
     protected $fillable = [
-        'sale_id', 'product_id', 'quantity', 'unit_price',
+        'sale_id', 'product_id', 'product_variant_id', 'quantity', 'unit_price',
         'cost_price', 'discount', 'subtotal', 'profit',
+        'modifiers', 'notes'
     ];
 
     protected $casts = [
+        'modifiers' => 'array',
         'unit_price' => 'decimal:2',
         'cost_price' => 'decimal:2',
         'discount' => 'decimal:2',
@@ -28,5 +30,10 @@ class SaleDetail extends Model
     public function product(): BelongsTo
     {
         return $this->belongsTo(Product::class);
+    }
+
+    public function variant(): BelongsTo
+    {
+        return $this->belongsTo(ProductVariant::class, 'product_variant_id');
     }
 }

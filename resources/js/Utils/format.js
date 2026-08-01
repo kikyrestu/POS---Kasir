@@ -17,3 +17,12 @@ export function formatCompact(value) {
     if (value >= 1000) return `Rp ${(value / 1000).toFixed(0)}K`;
     return `Rp ${value}`;
 }
+
+export function formatDate(dateString) {
+    if (!dateString) return '-';
+    return new Date(dateString).toLocaleDateString('id-ID', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric'
+    });
+}

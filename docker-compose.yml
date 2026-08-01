@@ -5,37 +5,47 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    image: buildypos-app:latest
-    container_name: buildypos_app
-    ports:
-      - "${APP_PORT:-8080}:80"
-    environment:
-      - APP_NAME=BuildyPOS
-      - APP_ENV=production
-      - APP_KEY=${APP_KEY}
-      - APP_DEBUG=false
-      - APP_URL=http://posdemo.buildyweb.com
-      - DB_CONNECTION=mysql
-      - DB_HOST=db
-      - DB_PORT=3306
-      - DB_DATABASE=${DB_DATABASE:-pos_db}
-      - DB_USERNAME=${DB_USERNAME:-root}
-      - DB_PASSWORD=${DB_PASSWORD:-root}
-    depends_on:
-      - db
     restart: unless-stopped
-
-  db:
-    image: mysql:8.0
-    container_name: buildypos_db
-    ports:
-      - "${DB_PORT_EXTERNAL:-33061}:3306"
-    environment:
-      - MYSQL_DATABASE=${DB_DATABASE:-pos_db}
-      - MYSQL_ROOT_PASSWORD=${DB_PASSWORD:-root}
     volumes:
-      - db_data:/var/lib/mysql
+      - app-data:/var/www/html
+    env_file: .env
+    depends_on:
+      - mysql
+    networks:
+      - saas-network
+
+  web:
+    image: nginx:alpine
     restart: unless-stopped
+    ports:
+      - "8890:80"
+    volumes:
+      - app-data:/var/www/html
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - app
+    networks:
+      - saas-network
+
+  mysql:
+    image: mysql:8.0
+    restart: unless-stopped
+    ports:
+      - "3390:3306"
+    environment:
+      MYSQL_DATABASE: ${DB_DATABASE:-pos_kasir}
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD:-password}
+      MYSQL_USER: ${DB_USERNAME:-user}
+      MYSQL_PASSWORD: ${DB_PASSWORD:-password}
+    volumes:
+      - mysql-data:/var/lib/mysql
+    networks:
+      - saas-network
 
 volumes:
-  db_data:
+  app-data:
+  mysql-data:
+
+networks:
+  saas-network:
+    driver: bridge

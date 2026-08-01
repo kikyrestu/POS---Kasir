@@ -1,4 +1,4 @@
-import { Head, useForm, Link, router } from '@inertiajs/react';
+import { Head, useForm, Link, router, usePage } from '@inertiajs/react';
 import AppLayout from '@/Layouts/AppLayout';
 import { Save, ArrowLeft, Upload, X, Plus, Trash2 } from 'lucide-react';
 import { Button, Input, Select } from '@/Components/UI';
@@ -6,6 +6,9 @@ import { useState } from 'react';
 
 export default function ProductForm({ product, categories, warehouses, generatedBarcode }) {
     const isEdit = !!product;
+
+    const { global_settings } = usePage().props;
+    const enable_variants = global_settings?.enable_variants === '1' || global_settings?.enable_variants === 'true' || global_settings?.enable_variants === true;
 
     const { data, setData, post, put, processing, errors } = useForm({
         name: product?.name || '',
@@ -20,8 +23,19 @@ export default function ProductForm({ product, categories, warehouses, generated
         image: null,
         expiry_date: product?.expiry_date || '',
         is_active: product?.is_active ?? true,
-        stocks: product?.stocks?.map(s => ({ warehouse_id: s.warehouse_id, quantity: s.quantity }))
-            || (warehouses?.length ? [{ warehouse_id: warehouses[0]?.id, quantity: 0 }] : []),
+        has_variants: product?.has_variants || false,
+        stocks: (!product?.has_variants && product?.stocks?.length) 
+            ? product.stocks.map(s => ({ warehouse_id: s.warehouse_id, quantity: s.quantity }))
+            : (warehouses?.length ? [{ warehouse_id: warehouses[0]?.id, quantity: 0 }] : []),
+        variants: (product?.has_variants && product?.variants?.length)
+            ? product.variants.map(v => ({
+                id: v.id,
+                name: v.name,
+                sku: v.sku || '',
+                price: v.price || '',
+                stocks: v.stocks?.length ? v.stocks.map(s => ({ warehouse_id: s.warehouse_id, quantity: s.quantity })) : (warehouses?.length ? [{ warehouse_id: warehouses[0]?.id, quantity: 0 }] : [])
+              }))
+            : [{ name: '', sku: '', price: '', stocks: (warehouses?.length ? [{ warehouse_id: warehouses[0]?.id, quantity: 0 }] : []) }],
     });
 
     const [imagePreview, setImagePreview] = useState(product?.image ? `/storage/${product.image}` : null);
@@ -60,6 +74,38 @@ export default function ProductForm({ product, categories, warehouses, generated
         const updated = [...data.stocks];
         updated[idx][field] = field === 'quantity' ? parseInt(value) || 0 : value;
         setData('stocks', updated);
+    };
+
+    const addVariant = () => {
+        setData('variants', [...data.variants, { name: '', sku: '', price: '', stocks: (warehouses?.length ? [{ warehouse_id: warehouses[0]?.id, quantity: 0 }] : []) }]);
+    };
+    
+    const removeVariant = (vIdx) => {
+        setData('variants', data.variants.filter((_, i) => i !== vIdx));
+    };
+
+    const updateVariant = (vIdx, field, value) => {
+        const updated = [...data.variants];
+        updated[vIdx][field] = value;
+        setData('variants', updated);
+    };
+
+    const addVariantStock = (vIdx) => {
+        const updated = [...data.variants];
+        updated[vIdx].stocks.push({ warehouse_id: warehouses[0]?.id || '', quantity: 0 });
+        setData('variants', updated);
+    };
+
+    const removeVariantStock = (vIdx, sIdx) => {
+        const updated = [...data.variants];
+        updated[vIdx].stocks = updated[vIdx].stocks.filter((_, i) => i !== sIdx);
+        setData('variants', updated);
+    };
+
+    const updateVariantStock = (vIdx, sIdx, field, value) => {
+        const updated = [...data.variants];
+        updated[vIdx].stocks[sIdx][field] = field === 'quantity' ? parseInt(value) || 0 : value;
+        setData('variants', updated);
     };
 
     return (
@@ -121,38 +167,115 @@ export default function ProductForm({ product, categories, warehouses, generated
                         )}
                     </div>
 
-                    {/* Stocks per warehouse */}
-                    {!isEdit && warehouses?.length > 0 && (
+                    {enable_variants && (
                         <div className="bg-white/80 backdrop-blur-sm border border-slate-200/60 rounded-2xl p-6 space-y-4">
-                            <div className="flex justify-between items-center">
-                                <h3 className="font-bold text-slate-900">Stok Awal per Gudang</h3>
-                                <button type="button" onClick={addStock} className="text-xs text-blue-600 hover:text-blue-700 font-semibold flex items-center gap-1">
-                                    <Plus className="w-3.5 h-3.5" /> Tambah Gudang
-                                </button>
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <h3 className="font-bold text-slate-900">Produk Varian</h3>
+                                    <p className="text-sm text-slate-500">Aktifkan jika produk ini memiliki pilihan varian (misal: warna, ukuran)</p>
+                                </div>
+                                <label className="flex items-center gap-3 cursor-pointer">
+                                    <div className="relative">
+                                        <input
+                                            type="checkbox"
+                                            checked={data.has_variants}
+                                            onChange={e => setData('has_variants', e.target.checked)}
+                                            className="sr-only"
+                                        />
+                                        <div className={`w-11 h-6 rounded-full transition-colors ${data.has_variants ? 'bg-blue-600' : 'bg-slate-300'}`}>
+                                            <div className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow-sm transition-transform ${data.has_variants ? 'translate-x-5' : ''}`} />
+                                        </div>
+                                    </div>
+                                </label>
                             </div>
-                            {data.stocks.map((stock, idx) => (
-                                <div key={idx} className="flex items-end gap-3">
-                                    <div className="flex-1">
-                                        <label className="block text-sm font-semibold text-slate-700 mb-1.5">Gudang</label>
-                                        <select
-                                            value={stock.warehouse_id}
-                                            onChange={e => updateStock(idx, 'warehouse_id', e.target.value)}
-                                            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30"
-                                        >
-                                            {warehouses.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
-                                        </select>
+                        </div>
+                    )}
+
+                    {/* Stocks or Variants */}
+                    {data.has_variants ? (
+                        <div className="space-y-4">
+                            {data.variants.map((variant, vIdx) => (
+                                <div key={vIdx} className="bg-white/80 backdrop-blur-sm border border-blue-100 rounded-2xl p-6 space-y-4">
+                                    <div className="flex justify-between items-center pb-3 border-b border-slate-100">
+                                        <h4 className="font-bold text-slate-900">Varian {vIdx + 1}</h4>
+                                        {data.variants.length > 1 && (
+                                            <button type="button" onClick={() => removeVariant(vIdx)} className="text-xs text-rose-500 hover:text-rose-600 font-semibold">Hapus Varian</button>
+                                        )}
                                     </div>
-                                    <div className="w-32">
-                                        <Input label="Jumlah" type="number" value={stock.quantity} onChange={e => updateStock(idx, 'quantity', e.target.value)} min="0" />
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                        <Input label="Nama Varian *" value={variant.name} onChange={e => updateVariant(vIdx, 'name', e.target.value)} placeholder="Misal: Merah, XL" />
+                                        <Input label="SKU Varian" value={variant.sku} onChange={e => updateVariant(vIdx, 'sku', e.target.value)} placeholder="Kosongkan jika sama" />
+                                        <Input label="Harga Khusus (Opsional)" type="number" value={variant.price} onChange={e => updateVariant(vIdx, 'price', e.target.value)} placeholder="Kosongkan jika pakai harga utama" min="0" />
                                     </div>
-                                    {data.stocks.length > 1 && (
-                                        <button type="button" onClick={() => removeStock(idx)} className="p-2.5 text-slate-400 hover:text-rose-500 transition-colors">
-                                            <Trash2 className="w-4 h-4" />
-                                        </button>
-                                    )}
+                                    
+                                    <div className="mt-4 p-4 bg-slate-50/50 rounded-xl space-y-3 border border-slate-100">
+                                        <div className="flex justify-between items-center">
+                                            <label className="block text-sm font-semibold text-slate-700">Stok Varian</label>
+                                            <button type="button" onClick={() => addVariantStock(vIdx)} className="text-xs text-blue-600 hover:text-blue-700 font-semibold flex items-center gap-1">
+                                                <Plus className="w-3.5 h-3.5" /> Tambah Gudang
+                                            </button>
+                                        </div>
+                                        {variant.stocks.map((stock, sIdx) => (
+                                            <div key={sIdx} className="flex items-end gap-3">
+                                                <div className="flex-1">
+                                                    <select
+                                                        value={stock.warehouse_id}
+                                                        onChange={e => updateVariantStock(vIdx, sIdx, 'warehouse_id', e.target.value)}
+                                                        className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30"
+                                                    >
+                                                        {warehouses.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
+                                                    </select>
+                                                </div>
+                                                <div className="w-32">
+                                                    <input type="number" value={stock.quantity} onChange={e => updateVariantStock(vIdx, sIdx, 'quantity', e.target.value)} min="0" className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30" placeholder="Qty" />
+                                                </div>
+                                                {variant.stocks.length > 1 && (
+                                                    <button type="button" onClick={() => removeVariantStock(vIdx, sIdx)} className="p-2 text-slate-400 hover:text-rose-500 transition-colors">
+                                                        <Trash2 className="w-4 h-4" />
+                                                    </button>
+                                                )}
+                                            </div>
+                                        ))}
+                                    </div>
                                 </div>
                             ))}
+                            <button type="button" onClick={addVariant} className="w-full py-3 border-2 border-dashed border-slate-200 text-slate-500 hover:border-blue-300 hover:text-blue-600 rounded-xl font-semibold text-sm flex items-center justify-center gap-2 transition-colors">
+                                <Plus className="w-4 h-4" /> Tambah Varian Baru
+                            </button>
                         </div>
+                    ) : (
+                        !isEdit && warehouses?.length > 0 && (
+                            <div className="bg-white/80 backdrop-blur-sm border border-slate-200/60 rounded-2xl p-6 space-y-4">
+                                <div className="flex justify-between items-center">
+                                    <h3 className="font-bold text-slate-900">Stok Awal per Gudang</h3>
+                                    <button type="button" onClick={addStock} className="text-xs text-blue-600 hover:text-blue-700 font-semibold flex items-center gap-1">
+                                        <Plus className="w-3.5 h-3.5" /> Tambah Gudang
+                                    </button>
+                                </div>
+                                {data.stocks.map((stock, idx) => (
+                                    <div key={idx} className="flex items-end gap-3">
+                                        <div className="flex-1">
+                                            <label className="block text-sm font-semibold text-slate-700 mb-1.5">Gudang</label>
+                                            <select
+                                                value={stock.warehouse_id}
+                                                onChange={e => updateStock(idx, 'warehouse_id', e.target.value)}
+                                                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30"
+                                            >
+                                                {warehouses.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
+                                            </select>
+                                        </div>
+                                        <div className="w-32">
+                                            <Input label="Jumlah" type="number" value={stock.quantity} onChange={e => updateStock(idx, 'quantity', e.target.value)} min="0" />
+                                        </div>
+                                        {data.stocks.length > 1 && (
+                                            <button type="button" onClick={() => removeStock(idx)} className="p-2.5 text-slate-400 hover:text-rose-500 transition-colors">
+                                                <Trash2 className="w-4 h-4" />
+                                            </button>
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
+                        )
                     )}
 
                     <div className="bg-white/80 backdrop-blur-sm border border-slate-200/60 rounded-2xl p-6 space-y-4">

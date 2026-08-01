@@ -143,6 +143,46 @@ const Receipt = forwardRef(({ sale, store = {}, cashier = '' }, ref) => {
             <div className="receipt-footer" style={{ marginTop: '4px', fontSize: '10px' }}>
                 Dicetak: {new Date().toLocaleString('id-ID')}
             </div>
+
+            {/* KOT Section */}
+            {store.enable_kot === '1' && (sale.order_type === 'dine_in' || sale.order_type === 'takeaway' || sale.order_type === 'delivery') && (
+                <>
+                    <div style={{ marginTop: '24px', borderTop: '2px dashed #000', paddingTop: '16px', textAlign: 'center', fontSize: '11px', fontWeight: 'bold' }}>
+                        --- POTONG DI SINI (DAPUR) ---
+                    </div>
+                    <div className="receipt-store-name" style={{ marginTop: '12px' }}>KOT DAPUR</div>
+                    <div className="receipt-row"><span>No</span><span>{sale.invoice_number}</span></div>
+                    <div className="receipt-row">
+                        <span>Tipe</span>
+                        <span>
+                            {sale.order_type === 'dine_in' ? 'DINE IN' : sale.order_type === 'takeaway' ? 'TAKEAWAY' : 'DELIVERY'}
+                        </span>
+                    </div>
+                    {sale.table && (
+                        <div className="receipt-row"><span>Meja</span><span style={{ fontSize: '14px', fontWeight: 'bold' }}>{sale.table.name}</span></div>
+                    )}
+                    <div className="receipt-row"><span>Waktu</span><span>{new Date(sale.created_at || new Date()).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}</span></div>
+
+                    <hr className="receipt-divider" />
+
+                    {sale.details?.map((item, idx) => (
+                        <div key={`kot-${idx}`} style={{ marginBottom: '8px', paddingBottom: '4px', borderBottom: '1px dotted #ccc' }}>
+                            <div className="receipt-row" style={{ alignItems: 'flex-start' }}>
+                                <span style={{ fontWeight: 'bold', fontSize: '14px', marginRight: '8px' }}>{item.quantity}x</span>
+                                <div style={{ flex: 1 }}>
+                                    <div style={{ fontWeight: 'bold', fontSize: '13px' }}>{item.product?.name}</div>
+                                    {item.modifiers && Array.isArray(item.modifiers) && item.modifiers.map((mod, midx) => (
+                                        <div key={midx} style={{ fontSize: '11px', paddingLeft: '4px' }}>- {mod.name}</div>
+                                    ))}
+                                    {item.notes && (
+                                        <div style={{ fontSize: '11px', fontStyle: 'italic', color: '#555', marginTop: '2px' }}>* {item.notes}</div>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    ))}
+                </>
+            )}
         </div>
     );
 });
