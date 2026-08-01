@@ -33,6 +33,10 @@ Route::post('/register-store', [TenantRegistrationController::class, 'store'])->
 $adminDomain = env('ADMIN_DOMAIN', 'adminkita.' . env('CENTRAL_DOMAIN', 'nexapos.localhost'));
 
 Route::domain($adminDomain)->name('admin.')->group(function () {
+    Route::get('/', function () {
+        return redirect()->route('admin.dashboard');
+    });
+
     Route::get('login', [AuthController::class, 'showLoginForm'])->name('login');
     Route::post('login', [AuthController::class, 'login']);
     Route::post('logout', [AuthController::class, 'logout'])->name('logout');
