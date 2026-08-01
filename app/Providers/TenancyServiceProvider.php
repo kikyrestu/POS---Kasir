@@ -105,7 +105,7 @@ class TenancyServiceProvider extends ServiceProvider
         $this->makeTenancyMiddlewareHighestPriority();
 
         Event::listen(Events\TenancyInitialized::class, function (Events\TenancyInitialized $event) {
-            \Illuminate\Support\Facades\URL::defaults(['tenant' => $event->tenant->getTenantKey()]);
+            \Illuminate\Support\Facades\URL::defaults(['tenant' => tenant('id')]);
         });
     }
 
