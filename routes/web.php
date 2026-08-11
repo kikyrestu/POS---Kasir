@@ -43,7 +43,8 @@ Route::domain($adminDomain)->name('admin.')->group(function () {
 
     Route::middleware('saas_admin.auth')->group(function () {
         Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
-        Route::resource('/tenants', TenantController::class)->except(['show', 'edit', 'update']);
+        Route::resource('/tenants', TenantController::class)->except(['show']);
+        Route::post('/tenants/{tenant}/reset-password', [TenantController::class, 'resetPassword'])->name('tenants.reset-password');
         Route::get('/features', [FeatureController::class, 'index'])->name('features.index');
         Route::post('/features/toggle', [FeatureController::class, 'toggle'])->name('features.toggle');
         Route::resource('/plans', \App\Http\Controllers\SaasAdmin\PlanController::class);
@@ -56,5 +57,7 @@ Route::domain($adminDomain)->name('admin.')->group(function () {
         
         Route::get('/settings', [\App\Http\Controllers\SaasAdmin\SettingController::class, 'index'])->name('settings.index');
         Route::post('/settings', [\App\Http\Controllers\SaasAdmin\SettingController::class, 'store'])->name('settings.store');
+        
+        Route::get('/changelog', [\App\Http\Controllers\SaasAdmin\ChangelogController::class, 'index'])->name('changelog.index');
     });
 });

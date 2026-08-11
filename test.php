@@ -1,0 +1,1 @@
+<?php require __DIR__.'/vendor/autoload.php'; require_once __DIR__.'/bootstrap/app.php'; \ = require_once __DIR__.'/bootstrap/app.php'; \ = \->make(Illuminate\Contracts\Console\Kernel::class); \->bootstrap(); var_export(tenant('lokabrew')->run(function() { return \App\Models\User::with('role')->get()->toArray(); }));

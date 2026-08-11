@@ -1,7 +1,7 @@
 import { Head, Link } from '@inertiajs/react';
 import SaasAdminLayout from '@/Layouts/SaasAdminLayout';
 import { Card, CardHeader, CardTitle, CardContent, Button, Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/Components/UI';
-import { Plus, Store, Trash2 } from 'lucide-react';
+import { Plus, Store, Trash2, Pencil } from 'lucide-react';
 
 export default function Index({ tenants }) {
     return (
@@ -59,6 +59,12 @@ export default function Index({ tenants }) {
                                     </TableCell>
                                     <TableCell>{new Date(tenant.created_at).toLocaleDateString()}</TableCell>
                                     <TableCell className="text-right">
+                                        <Link
+                                            href={route('admin.tenants.edit', tenant.id)}
+                                            className="text-gray-500 hover:text-gray-900"
+                                        >
+                                            <Pencil className="w-4 h-4 inline" />
+                                        </Link>
                                         <Link
                                             href={route('admin.tenants.destroy', tenant.id)}
                                             method="delete"

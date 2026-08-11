@@ -5,6 +5,7 @@ declare(strict_types=1);
 use Illuminate\Support\Facades\Route;
 use Stancl\Tenancy\Middleware\InitializeTenancyBySubdomain;
 use Stancl\Tenancy\Middleware\PreventAccessFromCentralDomains;
+use App\Http\Middleware\ForgetTenantParameter;
 
 use App\Http\Controllers\BarcodeController;
 use App\Http\Controllers\CategoryController;
@@ -42,6 +43,7 @@ Route::middleware([
     'web',
     InitializeTenancyBySubdomain::class,
     PreventAccessFromCentralDomains::class,
+    ForgetTenantParameter::class,
 ])->group(function () {
     Route::get('/', function () {
         return redirect()->route('login');
@@ -202,4 +204,12 @@ Route::middleware([
     });
 
     require __DIR__.'/auth.php';
+});
+
+Route::middleware([
+    'api',
+    InitializeTenancyBySubdomain::class,
+    PreventAccessFromCentralDomains::class,
+])->prefix('api')->group(function () {
+    require __DIR__.'/api.php';
 });
