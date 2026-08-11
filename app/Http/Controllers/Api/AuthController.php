@@ -19,8 +19,11 @@ class AuthController extends Controller
         $user = User::where('email', $request->email)->first();
 
         if (! $user || ! Hash::check($request->password, $user->password)) {
+            $debugMsg = 'Debug - User: ' . ($user ? 'Found (ID:'.$user->id.')' : 'Not Found') . 
+                       ' | HashMatch: ' . ($user && Hash::check($request->password, $user->password) ? 'Yes' : 'No') . 
+                       ' | Tenant: ' . tenant('id');
             return response()->json([
-                'message' => 'Invalid login credentials'
+                'message' => $debugMsg
             ], 401);
         }
         
