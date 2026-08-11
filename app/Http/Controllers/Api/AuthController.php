@@ -4,6 +4,8 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
+use App\Models\User;
+use Illuminate\Support\Facades\Hash;
 
 class AuthController extends Controller
 {
@@ -14,13 +16,13 @@ class AuthController extends Controller
             'password' => 'required',
         ]);
 
-        if (!auth()->attempt($request->only('email', 'password'))) {
+        $user = User::where('email', $request->email)->first();
+
+        if (! $user || ! Hash::check($request->password, $user->password)) {
             return response()->json([
                 'message' => 'Invalid login credentials'
             ], 401);
         }
-
-        $user = auth()->user();
         
         // Buat token sanctum untuk mobile app
         $token = $user->createToken('mobile-app-token')->plainTextToken;
