@@ -1,6 +1,6 @@
 {
-  "version": "1.0.1",
-  "apkUrl": "https://github.com/kikyrestu/POS---Kasir/releases/download/v1.0.1/buildypos-1.0.1.apk",
+  "version": "1.0.2",
+  "apkUrl": "https://github.com/kikyrestu/POS---Kasir/releases/download/v1.0.2/buildypos-1.0.2.apk",
   "mandatory": false,
-  "notes": "Sistem update otomatis: sekarang bisa download & pasang APK langsung dari dalam aplikasi (ada progress bar)."
+  "notes": "Perbaikan: edit produk tidak lagi blank abu-abu. Bonus: kategori produk kini otomatis terpilih saat edit."
 }
