@@ -1,6 +1,6 @@
 {
-  "version": "1.0.2",
-  "apkUrl": "https://github.com/kikyrestu/POS---Kasir/releases/download/v1.0.2/buildypos-1.0.2.apk",
+  "version": "1.0.3",
+  "apkUrl": "https://github.com/kikyrestu/POS---Kasir/releases/download/v1.0.3/buildypos-1.0.3.apk",
   "mandatory": false,
-  "notes": "Perbaikan: edit produk tidak lagi blank abu-abu. Bonus: kategori produk kini otomatis terpilih saat edit."
+  "notes": "Teks placeholder di form (nama produk, harga, pencarian, dll) yang tadinya putih/tak terbaca kini jelas. Update aplikasi ke depan jadi lebih ringan untuk perbaikan kecil."
 }
