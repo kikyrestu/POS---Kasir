@@ -1,0 +1,69 @@
+{
+  "expo": {
+    "name": "BuildyPOS",
+    "slug": "mobile-app",
+    "version": "1.0.4",
+    "runtimeVersion": "1.0.0",
+    "updates": {
+      "enabled": true,
+      "fallbackToCacheTimeout": 0,
+      "checkAutomatically": "ON_ERROR_RECOVERY",
+      "url": "https://u.expo.dev/a6b1ddae-f1ea-4b13-b099-f97f4659c28f"
+    },
+    "orientation": "default",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#E6F4FE",
+        "foregroundImage": "./assets/android-icon-foreground.png"
+      },
+      "package": "com.kikyrestu.mobileapp",
+      "versionCode": 5,
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.BLUETOOTH",
+        "android.permission.BLUETOOTH_ADMIN",
+        "android.permission.BLUETOOTH_CONNECT"
+      ]
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-secure-store",
+      "expo-sqlite",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Akses kamera dibutuhkan untuk scan barcode barang."
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Akses galeri dibutuhkan untuk memilih foto produk.",
+          "cameraPermission": "Akses kamera dibutuhkan untuk memotret produk."
+        }
+      ],
+      [
+        "react-native-ble-plx",
+        {
+          "isBackgroundEnabled": false,
+          "modes": [],
+          "bluetoothAlwaysPermission": "Izin Bluetooth dibutuhkan untuk mencetak struk ke printer thermal."
+        }
+      ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "a6b1ddae-f1ea-4b13-b099-f97f4659c28f"
+      }
+    },
+    "owner": "kikyrestu"
+  }
+}
